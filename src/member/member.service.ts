@@ -1,6 +1,7 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { Member } from './member.model';
 import { MemberRepository } from './member.repository.js';
+import { CreateMemberDto, UpdateMemberDto } from './dto/member.dto';
 
 @Injectable()
 export class MemberService {
@@ -14,13 +15,19 @@ export class MemberService {
     return this.memberRepository.findOne(id);
   }
 
-  async create(member: Member) {
+  async create(createMemberDto: CreateMemberDto) {
     try {
       // Check if member with email already exists
-      const existingMember = await this.memberRepository.findByEmail(member.email);
+      const existingMember = await this.memberRepository.findByEmail(
+        createMemberDto.email,
+      );
       if (existingMember) {
         throw new ConflictException('Email already exists');
       }
+
+      const member = new Member();
+      Object.assign(member, createMemberDto);
+
       return this.memberRepository.create(member);
     } catch (error) {
       if (error.code === 11000) {
@@ -30,7 +37,9 @@ export class MemberService {
     }
   }
 
-  async update(id: string, member: Member) {
+  async update(id: string, updateMemberDto: UpdateMemberDto) {
+    const member = new Member();
+    Object.assign(member, updateMemberDto);
     return this.memberRepository.update(id, member);
   }
 

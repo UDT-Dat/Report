@@ -5,6 +5,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { EventModule } from './event/event.module';
 import { MemberModule } from './member/member.module';
+import { AuthModule } from './auth/auth.module';
+import { LibraryModule } from './library/library.module';
 
 @Module({
   imports: [
@@ -13,6 +15,8 @@ import { MemberModule } from './member/member.module';
     ),
     EventModule,
     MemberModule,
+    AuthModule,
+    LibraryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -11,6 +11,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Member } from './member.model';
 import { MemberService } from './member.service';
+import { CreateMemberDto, UpdateMemberDto } from './dto/member.dto';
 
 @ApiTags('Members')
 @Controller('members')
@@ -50,8 +51,8 @@ export class MemberController {
     description: 'Member created successfully',
     type: Member,
   })
-  create(@Body() member: Member) {
-    return this.memberService.create(member);
+  create(@Body() createMemberDto: CreateMemberDto) {
+    return this.memberService.create(createMemberDto);
   }
 
   @Put(':id')
@@ -62,8 +63,8 @@ export class MemberController {
     type: Member,
   })
   @ApiResponse({ status: 404, description: 'Member not found' })
-  update(@Param('id') id: string, @Body() member: Member) {
-    return this.memberService.update(id, member);
+  update(@Param('id') id: string, @Body() updateMemberDto: UpdateMemberDto) {
+    return this.memberService.update(id, updateMemberDto);
   }
 
   @Delete(':id')

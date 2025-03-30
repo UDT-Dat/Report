@@ -11,6 +11,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Event } from './event.model';
 import { EventService } from './event.service';
+import { CreateEventDto, UpdateEventDto } from './dto/event.dto';
 
 @ApiTags('Events')
 @Controller('events')
@@ -50,8 +51,8 @@ export class EventController {
     description: 'Event created successfully',
     type: Event,
   })
-  create(@Body() event: Event) {
-    return this.eventService.create(event);
+  create(@Body() createEventDto: CreateEventDto) {
+    return this.eventService.create(createEventDto);
   }
 
   @Put(':id')
@@ -62,8 +63,8 @@ export class EventController {
     type: Event,
   })
   @ApiResponse({ status: 404, description: 'Event not found' })
-  update(@Param('id') id: string, @Body() event: Event) {
-    return this.eventService.update(id, event);
+  update(@Param('id') id: string, @Body() updateEventDto: UpdateEventDto) {
+    return this.eventService.update(id, updateEventDto);
   }
 
   @Delete(':id')
