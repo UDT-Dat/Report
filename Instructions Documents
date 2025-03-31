@@ -1,0 +1,118 @@
+# Hướng dẫn Cài đặt và Chạy Ứng dụng
+
+## Yêu cầu hệ thống
+- Node.js (phiên bản 14.x trở lên)
+- MongoDB (phiên bản 4.4 trở lên)
+- npm hoặc yarn
+
+## Các bước cài đặt
+
+### 1. Cài đặt MongoDB
+1. Tải và cài đặt MongoDB từ [trang chủ MongoDB](https://www.mongodb.com/try/download/community)
+2. Khởi động MongoDB service
+3. Tạo database mới tên là `graduation-project`
+
+### 2. Cài đặt Node.js
+1. Tải và cài đặt Node.js từ [trang chủ Node.js](https://nodejs.org/)
+2. Kiểm tra cài đặt bằng lệnh:
+```bash
+node --version
+npm --version
+```
+
+### 3. Cài đặt dự án
+1. Clone repository:
+```bash
+git clone https://github.com/UDT-Dat/Report.git
+cd Report
+```
+
+2. Cài đặt các dependencies:
+```bash
+npm install
+```
+
+3. Tạo file môi trường:
+```bash
+cp .env.example .env
+```
+
+4. Cập nhật các biến môi trường trong file `.env`:
+```
+MONGODB_URI=mongodb://localhost:27017/graduation-project
+JWT_SECRET=your_jwt_secret_here
+```
+
+### 4. Chạy ứng dụng
+1. Chạy ở môi trường development:
+```bash
+npm run start:dev
+```
+
+2. Chạy ở môi trường production:
+```bash
+npm run build
+npm run start:prod
+```
+
+## Kiểm tra API
+Ứng dụng sẽ chạy tại `http://localhost:3000`
+
+### Truy cập Swagger UI
+- Mở trình duyệt và truy cập: `http://localhost:3000/api`
+- Tại đây bạn có thể xem và test các API endpoints
+
+### Test các API chính
+
+1. Đăng ký tài khoản mới:
+```bash
+curl -X POST http://localhost:3000/auth/register \
+-H "Content-Type: application/json" \
+-d '{
+  "username": "testuser",
+  "email": "test@example.com",
+  "password": "password123"
+}'
+```
+
+2. Đăng nhập:
+```bash
+curl -X POST http://localhost:3000/auth/login \
+-H "Content-Type: application/json" \
+-d '{
+  "email": "test@example.com",
+  "password": "password123"
+}'
+```
+
+3. Tạo sự kiện mới:
+```bash
+curl -X POST http://localhost:3000/events \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer YOUR_TOKEN" \
+-d '{
+  "title": "Sự kiện test",
+  "description": "Mô tả sự kiện",
+  "startDate": "2024-03-20T10:00:00Z",
+  "endDate": "2024-03-20T12:00:00Z",
+  "location": "Địa điểm tổ chức"
+}'
+```
+
+## Xử lý lỗi thường gặp
+
+1. Lỗi kết nối MongoDB:
+- Kiểm tra MongoDB service đã chạy chưa
+- Kiểm tra connection string trong file .env
+- Đảm bảo port MongoDB (mặc định 27017) không bị block
+
+2. Lỗi JWT:
+- Kiểm tra JWT_SECRET trong file .env
+- Đảm bảo token được gửi đúng format trong header
+
+3. Lỗi CORS:
+- Kiểm tra cấu hình CORS trong main.ts
+- Đảm bảo origin được phép truy cập
+
+## Liên hệ hỗ trợ
+Nếu gặp vấn đề, vui lòng tạo issue mới trên GitHub repository hoặc liên hệ với team phát triển.
