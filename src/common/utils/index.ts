@@ -1,0 +1,31 @@
+const _ = require("lodash");
+
+export interface DataObject {
+    _id?: any;
+    [key: string]: any;
+}
+
+export const getInfoData = (fields: string[] = [], object: DataObject = {}, key: string = "id"): DataObject => {
+    const { _id, ...rest } = object;
+    if (!fields.length) {
+        return {
+            ...rest,
+            [key]: _id,
+        };
+    }
+
+    const [fieldsToKeep, fieldsToRemove] = fields.reduce<[string[], string[]]>(
+        ([keep, remove], field) => {
+            const target = field.startsWith("-") ? remove : keep;
+            target.push(field.replace(/^-/, ""));
+            return [keep, remove];
+        },
+        [[], []],
+    );
+
+    const result = fieldsToKeep.length ? _.pick(rest, fieldsToKeep) : rest;
+
+    const sanitizedResult = fieldsToRemove.length ? _.omit(result, fieldsToRemove) : result;
+
+    return _id ? { ...sanitizedResult, [key]: _id } : sanitizedResult;
+};
