@@ -15,10 +15,10 @@ import { Attachment, AttachmentDocument } from './models/attachment.model';
 import { Permission, PermissionDocument, PermissionType } from './models/permission.model';
 import { CreateLibraryDto } from './dto/create-library.dto';
 import { UpdateLibraryDto } from './dto/update-library.dto';
-import { CreateAttachmentDto } from './dto/create-attachment.dto';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { UserRole } from '../user/user.model';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
+import { toObjectId } from 'src/common/utils';
 
 @Injectable()
 export class LibraryService {
@@ -30,7 +30,7 @@ export class LibraryService {
 
   async createLibrary(createLibraryDto: CreateLibraryDto, user: User): Promise<Library> {
     // Only admin can create libraries
-    if (user.role !== UserRole.ADMIN) {
+    if (![UserRole.ADMIN, UserRole.MENTOR].includes(user.role as UserRole)) {
       throw new ForbiddenException('Only administrators can create libraries');
     }
 
@@ -38,6 +38,7 @@ export class LibraryService {
       const library = new this.libraryModel({
         ...createLibraryDto,
         createdBy: user.userId,
+        lastUpdateBy: user.userId,
       });
 
       return await library.save();
@@ -48,9 +49,9 @@ export class LibraryService {
 
   async findAllLibraries(user: User): Promise<Library[]> {
     try {
-      const isAdmin = user.role === UserRole.ADMIN;
+      const isAdmin = [UserRole.ADMIN, UserRole.MENTOR].includes(user.role as UserRole);
 
-      // If user is admin, return all libraries
+      // If user is admin,mentor return all libraries
       if (isAdmin) {
         return this.libraryModel.find().populate({
           path: 'createdBy',
@@ -59,7 +60,7 @@ export class LibraryService {
       }
 
       // Get libraries user has permission to access
-      const permissions = await this.permissionModel.find({ user: user.userId }).distinct('library');
+      const permissions = await this.permissionModel.find({ user: toObjectId(user.userId) }).distinct('library');
 
       // Find all libraries that are either public or user has permission to
       return this.libraryModel.find({
@@ -88,7 +89,7 @@ export class LibraryService {
         throw new NotFoundException('Library not found');
       }
 
-      const isAdmin = user.role === UserRole.ADMIN;
+      const isAdmin = [UserRole.ADMIN, UserRole.MENTOR].includes(user.role as UserRole);
       const isCreator = library.createdBy.toString() === user.userId.toString();
 
       // Check if user can access this library
@@ -99,7 +100,7 @@ export class LibraryService {
       // Check if user has permission
       const permission = await this.permissionModel.findOne({
         library: library._id,
-        user: user.userId
+        user: toObjectId(user.userId)
       });
 
       if (!permission) {
@@ -123,7 +124,7 @@ export class LibraryService {
         throw new NotFoundException('Library not found');
       }
 
-      const isAdmin = user.role === UserRole.ADMIN;
+      const isAdmin = [UserRole.ADMIN, UserRole.MENTOR].includes(user.role as UserRole);
       const isCreator = library.createdBy.toString() === user.userId.toString();
 
       if (!isAdmin && !isCreator) {
@@ -131,7 +132,7 @@ export class LibraryService {
       }
 
       const updatedLibrary = await this.libraryModel
-        .findByIdAndUpdate(id, updateLibraryDto, { new: true })
+        .findByIdAndUpdate(id, { ...updateLibraryDto, lastUpdateBy: toObjectId(user.userId) }, { new: true })
         .populate({
           path: 'createdBy',
           select: 'name email _id'
@@ -184,13 +185,14 @@ export class LibraryService {
 
   // Attachment methods
 
-  async uploadAttachment(
-    file: Express.Multer.File,
-    createAttachmentDto: CreateAttachmentDto,
-    user: User,
-  ): Promise<Attachment> {
+  async uploadAttachment({ files, libraryId, user }:
+    {
+      files: Express.Multer.File[],
+      user: any, libraryId: string
+    }): Promise<Attachment[]> {
     try {
-      const library = await this.libraryModel.findById(createAttachmentDto.libraryId);
+      console.log(user)
+      const library = await this.libraryModel.findById(libraryId);
 
       if (!library) {
         throw new NotFoundException('Library not found');
@@ -202,7 +204,7 @@ export class LibraryService {
       // Check if user has write permission
       const hasWritePermission = await this.permissionModel.findOne({
         library: library._id,
-        user: user.userId,
+        user: toObjectId(user.userId),
         type: { $in: [PermissionType.WRITE, PermissionType.ADMIN] }
       });
 
@@ -210,18 +212,19 @@ export class LibraryService {
       if (!isAdmin && !isCreator && !hasWritePermission) {
         throw new ForbiddenException('You do not have permission to upload to this library');
       }
-
-      const attachment = new this.attachmentModel({
-        originalname: file.originalname,
-        url: file.path,
-        fileType: file.mimetype,
-        size: file.size,
-        library: new Types.ObjectId(createAttachmentDto.libraryId),
-        uploadedBy: user.userId,
-      });
-
-      return await attachment.save();
+      const attachments = await this.attachmentModel.insertMany(files.map(file => {
+        return {
+          originalname: file.originalname,
+          url: file.path,
+          fileType: file.mimetype,
+          size: file.size,
+          library: toObjectId(libraryId),
+          uploadedBy: toObjectId(user.userId),
+        }
+      }))
+      return attachments;
     } catch (error) {
+      console.log(error)
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error;
       }
@@ -232,10 +235,10 @@ export class LibraryService {
   async getAttachmentsByLibrary(libraryId: string, user: User): Promise<Attachment[]> {
     try {
       // First check if user has access to the library
-      await this.findLibraryById(libraryId, user);
+      await this.findLibraryById(toObjectId(libraryId), user);
 
       // Then return all attachments for that library
-      return this.attachmentModel.find({ library: libraryId })
+      return this.attachmentModel.find({ library: toObjectId(libraryId) })
         .populate({
           path: 'uploadedBy',
           select: 'name email _id'
@@ -287,9 +290,9 @@ export class LibraryService {
 
   // Permission methods
 
-  async createPermission(createPermissionDto: CreatePermissionDto, user: User): Promise<Permission> {
+  async createPermission(createPermissionDto: CreatePermissionDto, libraryId: string, user: User): Promise<Permission> {
     try {
-      const library = await this.libraryModel.findById(createPermissionDto.libraryId);
+      const library = await this.libraryModel.findById(toObjectId(libraryId));
 
       if (!library) {
         throw new NotFoundException('Library not found');
@@ -305,8 +308,8 @@ export class LibraryService {
 
       // Check if permission already exists
       const existingPermission = await this.permissionModel.findOne({
-        library: createPermissionDto.libraryId,
-        user: createPermissionDto.userId
+        library: libraryId,
+        user: toObjectId(createPermissionDto.userId)
       });
 
       // If not admin, restrict to only granting READ permissions
@@ -322,8 +325,8 @@ export class LibraryService {
 
       // Create new permission
       const permission = new this.permissionModel({
-        library: new Types.ObjectId(createPermissionDto.libraryId),
-        user: new Types.ObjectId(createPermissionDto.userId),
+        library: toObjectId(libraryId),
+        user: toObjectId(createPermissionDto.userId),
         type: createPermissionDto.type,
         grantedBy: user.userId
       });
@@ -353,7 +356,7 @@ export class LibraryService {
         throw new ForbiddenException('Only administrators and library creators can view permissions for this library');
       }
 
-      return this.permissionModel.find({ library: libraryId })
+      return this.permissionModel.find({ library: toObjectId(libraryId) })
         .populate({
           path: 'user',
           select: 'name email _id'
@@ -426,7 +429,7 @@ export class LibraryService {
       // Find the existing permission
       const existingPermission = await this.permissionModel.findOne({
         library: libraryId,
-        user: userId
+        user: toObjectId(userId)
       });
 
       if (!existingPermission) {

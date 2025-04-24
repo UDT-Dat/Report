@@ -11,14 +11,16 @@ import {
   UseGuards,
   UseInterceptors,
   Request,
+  UploadedFiles,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
   ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { LibraryService } from './library.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -31,7 +33,6 @@ import { Library } from './models/library.model';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../user/user.model';
-import { CreateAttachmentDto } from './dto/create-attachment.dto';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { Attachment } from './models/attachment.model';
 import { Permission } from './models/permission.model';
@@ -42,7 +43,7 @@ import { UpdatePermissionDto } from './dto/update-permission.dto';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class LibraryController {
-  constructor(private readonly libraryService: LibraryService) {}
+  constructor(private readonly libraryService: LibraryService) { }
 
 
   // Library endpoints
@@ -52,7 +53,7 @@ export class LibraryController {
   @ApiOperation({ summary: 'Create a new library (admin only)' })
   @ApiResponse({ status: 201, description: 'Library created successfully', type: Library })
   async createLibrary(
-    @Body() createLibraryDto: CreateLibraryDto, 
+    @Body() createLibraryDto: CreateLibraryDto,
     @UserDecorator() user: User
   ): Promise<Library> {
     return this.libraryService.createLibrary(createLibraryDto, user);
@@ -76,7 +77,7 @@ export class LibraryController {
   @ApiOperation({ summary: 'Update a library' })
   @ApiResponse({ status: 200, description: 'Library updated successfully', type: Library })
   async updateLibrary(
-    @Param('id') id: string, 
+    @Param('id') id: string,
     @Body() updateLibraryDto: UpdateLibraryDto,
     @UserDecorator() user: User
   ): Promise<Library> {
@@ -92,19 +93,31 @@ export class LibraryController {
 
   // Attachment endpoints
   @Post(':id/attachments')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FilesInterceptor('files', 5))
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        files: {
+          type: 'array',
+          items: {
+            type: 'string',
+            format: 'binary',
+          },
+        },
+      }
+    }
+  })
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload an attachment to a library' })
-  @ApiResponse({ status: 201, description: 'Attachment uploaded successfully', type: Attachment })
+  @ApiResponse({ status: 201, description: 'Attachment uploaded successfully', type: Attachment, isArray: true })
   async uploadAttachment(
     @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
-    @Body() createAttachmentDto: CreateAttachmentDto,
+    @UploadedFiles() files: Express.Multer.File[],
     @UserDecorator() user: User,
-  ): Promise<Attachment> {
-    // Override libraryId with the path param
-    createAttachmentDto.libraryId = id;
-    return this.libraryService.uploadAttachment(file, createAttachmentDto, user);
+  ): Promise<Attachment[]> {
+    console.log(files)
+    return this.libraryService.uploadAttachment({ files, libraryId: id, user });
   }
 
   @Get(':id/attachments')
@@ -131,8 +144,7 @@ export class LibraryController {
     @UserDecorator() user: User,
   ): Promise<Permission> {
     // Override libraryId with the path param
-    createPermissionDto.libraryId = id;
-    return this.libraryService.createPermission(createPermissionDto, user);
+    return this.libraryService.createPermission(createPermissionDto, id, user);
   }
 
   @Get(':id/permissions')

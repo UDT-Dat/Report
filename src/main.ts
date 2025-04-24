@@ -12,20 +12,23 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import * as cookieParser from 'cookie-parser';
 import * as express from 'express';
-
+import helmet from 'helmet';
+import * as morgan from 'morgan';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-
+  app.use(helmet());
+  app.use(morgan('dev'));
   // Enable CORS with specific options
   app.enableCors({
     origin: true, // Cho phép tất cả origins trong môi trường development
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
+
   });
 
   // Cấu hình prefix cho tất cả các API routes
-  app.setGlobalPrefix('api');
-  
+  // app.setGlobalPrefix('api');
+
   // Phục vụ tệp tĩnh từ thư mục public
   app.useStaticAssets(join(__dirname, '..', 'public'));
 
@@ -72,3 +75,5 @@ async function bootstrap() {
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
+
+

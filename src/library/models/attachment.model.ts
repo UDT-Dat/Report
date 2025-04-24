@@ -30,12 +30,6 @@ export class Attachment {
   @ApiProperty({ description: 'The user who uploaded the file' })
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   uploadedBy: User;
-
-  @Prop()
-  createdAt: Date;
-
-  @Prop()
-  updatedAt: Date;
 }
 
 export const AttachmentSchema = SchemaFactory.createForClass(Attachment); 
