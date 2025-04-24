@@ -16,6 +16,10 @@ function splitKey(key) {
 export default function convertParam(queryParams: object) {
     const result = {};
     const errors: string[] = [];
+    const pagination = {
+        size: 10,
+        page: 1
+    }
 
     for (const [key, value] of Object.entries(queryParams)) {
         if (typeof value === "string") {
@@ -65,6 +69,14 @@ export default function convertParam(queryParams: object) {
                         result[attribute] = value === "true";
                         break;
                     }
+                    if (key === "size") {
+                        pagination.size = isNaN(Number(value)) ? 10 : Number(value);
+                        break;
+                    }
+                    if (key === "page") {
+                        pagination.page = isNaN(Number(value)) ? 1 : Number(value);
+                        break;
+                    }
                     result[key] = isNaN(Number(value)) ? value : parseFloat(value);
             }
         } else if (value) {
@@ -72,5 +84,5 @@ export default function convertParam(queryParams: object) {
         }
     }
 
-    return { result, errors };
+    return { result, errors, pagination };
 }

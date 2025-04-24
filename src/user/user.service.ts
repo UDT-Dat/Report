@@ -32,12 +32,11 @@ export class UserService {
     }
 
     async findAll(query: object): Promise<User[]> {
-        const { result: filter, errors } = convertParam(query)
-        console.log(filter)
+        const { result: filter, errors, pagination } = convertParam(query)
         if (errors.length > 0) {
             throw new BadRequestException(errors.join("."))
         }
-        return this.userModel.find(filter).select(["-password", "-__v"]).lean();
+        return this.userModel.find(filter).select(["-password", "-__v"]).limit(pagination.size).skip((pagination.page - 1) * pagination.size).lean();
     }
 
     async findOne(id: string): Promise<User> {

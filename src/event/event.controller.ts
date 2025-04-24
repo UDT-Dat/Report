@@ -30,28 +30,41 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../user/user.model';
 import { MulterExceptionFilter } from 'src/common/filters/multer-exception.filter';
+import { RemoveFileFieldInterceptor } from 'src/common/interceptors/remove-file-field.interceptor';
+import { QueryValidationPipe } from 'src/common/pipes/query-validation.pipe';
 
 @ApiTags('Events')
 @Controller('events')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class EventController {
-  constructor(private readonly eventService: EventService) { }
+  private readonly eventQueryPipe: QueryValidationPipe;
+  constructor(private readonly eventService: EventService) {
+    this.eventQueryPipe = new QueryValidationPipe(
+      ["title","description", "startDate", "endDate", "maxParticipants"], // allowedAttributes
+      [], // allowedOperators (giới hạn chỉ cho phép một số toán tử)
+      ["title", "description", "location", "startDate", "endDate", "maxParticipants"] // eqOnlyFields (status chỉ được dùng với toán tử eq)
+    );
+  }
+
 
   @Get()
   @ApiOperation({ summary: 'Get all events with pagination' })
-  @ApiQuery({ name: 'size', required: false, type: Number })
-  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({
+    name: 'filter',
+    required: false,
+    description: 'Filter query in JSON format or query string format. Examples: {"username_like":"john"} or username_like=john&email=test@example.com',
+    type: String
+  })
   @ApiResponse({
     status: 200,
     description: 'List of events retrieved successfully',
     type: Event,
     isArray: true,
   })
-  findAll(@Query('size') size: number, @Query('page') page: number) {
-    return this.eventService.findAll({
-      size, page
-    });
+  async findAll(@Query() query: any) {
+    const validatedQuery = await this.eventQueryPipe.transform(query.filter);
+    return this.eventService.findAll(validatedQuery);
   }
 
   @Get(':id')
@@ -127,6 +140,7 @@ export class EventController {
   @Put(':id')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
+  @UseInterceptors(RemoveFileFieldInterceptor)
   @ApiOperation({ summary: 'Update an existing event' })
   @UseFilters(MulterExceptionFilter)
   @UseInterceptors(
@@ -135,8 +149,6 @@ export class EventController {
         fileSize: 5 * 1024 * 1024, // 5MB
       },
       fileFilter: (req, file, cb) => {
-        console.log('🔥 fileFilter triggered'); 
-        console.log(file)
         if (!file) {
           return cb(null, true);
         }
@@ -194,7 +206,7 @@ export class EventController {
   @ApiResponse({ status: 200, description: 'Event deleted successfully' })
   @ApiResponse({ status: 404, description: 'Event not found' })
   async remove(@Param('id') id: string, @Request() req): Promise<Event> {
-    
+
     return this.eventService.remove(id, req.user);
   }
 

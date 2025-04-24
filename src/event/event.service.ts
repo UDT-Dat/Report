@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
@@ -7,6 +7,7 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { User, UserRole } from '../user/user.model';
 import { toObjectId } from 'src/common/utils';
+import convertParam from 'src/common/utils/convert-params';
 
 @Injectable()
 export class EventService {
@@ -31,10 +32,14 @@ export class EventService {
   }
 
 
-  async findAll({ size = 10, page = 1 }: { size?: number; page?: number }): Promise<Event[]> {
-    return this.eventModel.find()
-      .limit(size)
-      .skip((page - 1) * size)
+  async findAll(query: object): Promise<Event[]> {
+    const { result: filter, errors, pagination } = convertParam(query)
+    if (errors.length > 0) {
+      throw new BadRequestException(errors.join("."))
+    }
+    return this.eventModel.find(filter)
+      .limit(pagination.size)
+      .skip((pagination.page - 1) * pagination.size)
       .populate('createdBy')
       .populate('participants')
       .exec();

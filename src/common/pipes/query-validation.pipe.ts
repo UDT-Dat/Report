@@ -62,7 +62,12 @@ export class QueryValidationPipe implements PipeTransform {
 
             const isEqOnly = this.eqOnlyFieldsSet.has(attr);
             const isAllowedAttr = this.allowedAttributesSet.has(attr) || isEqOnly;
-
+            console.log("isEqOnly", isEqOnly)
+            console.log("isAllowedAttr", isAllowedAttr)
+            console.log("op", op)
+            if(isEqOnly && isAllowedAttr){
+                continue;
+            }
             // Validate attribute and operator in one condition check
             if (!isAllowedAttr || (isEqOnly && op !== 'eq') || (!isEqOnly && !this.allowedOperatorsSet.has(op))) {
                 invalidKeys.push(key);

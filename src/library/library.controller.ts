@@ -25,8 +25,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { User as UserDecorator } from '../auth/decorators/user.decorator';
 import { User } from '../auth/user.model';
 import { Client } from '@microsoft/microsoft-graph-client';
-import { CreatePostDto } from './dto/create-post.dto';
-import { UpdatePostDto } from './dto/update-post.dto';
 import { CreateLibraryDto } from './dto/create-library.dto';
 import { UpdateLibraryDto } from './dto/update-library.dto';
 import { Library } from './models/library.model';

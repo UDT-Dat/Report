@@ -12,17 +12,4 @@ export class CreateLibraryDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ description: 'The file URL or path of the resource' })
-  @IsNotEmpty()
-  @IsString()
-  fileUrl: string;
-
-  @ApiProperty({ description: 'The type of the resource (pdf, doc, video, etc)', required: false })
-  @IsOptional()
-  @IsString()
-  fileType?: string;
-
-  @ApiProperty({ description: 'The size of the file in bytes', required: false })
-  @IsOptional()
-  fileSize?: number;
 } 
