@@ -15,7 +15,12 @@ import { NotificationModule } from './notification/notification.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     MongooseModule.forRoot(
-      process.env.MONGODB_URI || 'mongodb+srv://project_admin:%2Aproject_admin%40123@cluster0.nkrrf.mongodb.net/graduation_project',
+      process.env.MONGODB_URI || 'mongodb+srv://project_admin:%2Aproject_admin%40123@cluster0.nkrrf.mongodb.net/graduation_project', {
+      connectionFactory: (connection) => {
+        connection.set('debug', true);
+        return connection;
+      },
+    }
     ),
     EventModule,
     UserModule,
@@ -27,4 +32,4 @@ import { NotificationModule } from './notification/notification.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

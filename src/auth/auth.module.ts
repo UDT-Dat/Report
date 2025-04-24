@@ -7,9 +7,11 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { MicrosoftStrategy } from './strategies/microsoft.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
 import { UserModule } from '../user/user.module';
 import { RefreshToken, RefreshTokenSchema } from './models/refresh-token.model';
 import { RefreshTokenService } from './refresh-token.service';
+import { UserService } from 'src/user/user.service';
 
 @Module({
   imports: [
@@ -24,12 +26,12 @@ import { RefreshTokenService } from './refresh-token.service';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET') || 'your-secret-key',
-        signOptions: { expiresIn: '15m' }, // Shorter expiration for access tokens
+        signOptions: { expiresIn: '7d' }, // Shorter expiration for access tokens
       }),
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, MicrosoftStrategy, RefreshTokenService],
+  providers: [AuthService, JwtStrategy, MicrosoftStrategy, GoogleStrategy, RefreshTokenService],
   exports: [AuthService],
 })
-export class AuthModule {}
+export class AuthModule { }

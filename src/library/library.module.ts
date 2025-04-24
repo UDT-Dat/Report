@@ -4,32 +4,16 @@ import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { LibraryController } from './library.controller';
 import { LibraryService } from './library.service';
-import { Post, PostSchema } from './models/post.model';
-import { Media, MediaSchema } from './models/media.model';
-import { Library, LibrarySchema } from './library.model';
-/**
- * import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { Library, LibrarySchema } from './models/library.model';
+import { Attachment, AttachmentSchema } from './models/attachment.model';
+import { Permission, PermissionSchema } from './models/permission.model';
 
-import { EventController } from './event.controller';
-import { EventService } from './event.service';
-import { Event, EventSchema } from './event.model';
-
-@Module({
-  imports: [MongooseModule.forFeature([{ name: Event.name, schema: EventSchema }])],
-  controllers: [EventController],
-  providers: [EventService],
-  exports: [EventService]
-})
-export class EventModule { }
-
- */
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: Post.name, schema: PostSchema },
-      { name: Media.name, schema: MediaSchema },
-      {name: Library.name, schema: LibrarySchema}
+      { name: Library.name, schema: LibrarySchema },
+      { name: Attachment.name, schema: AttachmentSchema },
+      { name: Permission.name, schema: PermissionSchema }
     ]),
     MulterModule.register({
       storage: diskStorage({

@@ -4,370 +4,438 @@ import {
   UnauthorizedException,
   InternalServerErrorException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Post, PostDocument, PostStatus } from './models/post.model';
-import { Media, MediaDocument, MediaType } from './models/media.model';
 import { User } from '../auth/user.model';
 import { v4 as uuidv4 } from 'uuid';
-import { Library, LibraryDocument } from './library.model';
+import { Library, LibraryDocument } from './models/library.model';
+import { Attachment, AttachmentDocument } from './models/attachment.model';
+import { Permission, PermissionDocument, PermissionType } from './models/permission.model';
 import { CreateLibraryDto } from './dto/create-library.dto';
 import { UpdateLibraryDto } from './dto/update-library.dto';
+import { CreateAttachmentDto } from './dto/create-attachment.dto';
+import { CreatePermissionDto } from './dto/create-permission.dto';
 import { UserRole } from '../user/user.model';
+import { UpdatePermissionDto } from './dto/update-permission.dto';
 
 @Injectable()
 export class LibraryService {
   constructor(
-    @InjectModel(Post.name) private postModel: Model<PostDocument>,
-    @InjectModel(Media.name) private mediaModel: Model<MediaDocument>,
     @InjectModel(Library.name) private libraryModel: Model<LibraryDocument>,
+    @InjectModel(Attachment.name) private attachmentModel: Model<AttachmentDocument>,
+    @InjectModel(Permission.name) private permissionModel: Model<PermissionDocument>,
   ) {}
+  
+  async createLibrary(createLibraryDto: CreateLibraryDto, user: User): Promise<Library> {
+    // Only admin can create libraries
+    if (user.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only administrators can create libraries');
+    }
 
-  // Post Management
-  async createPost(
-    title: string,
-    content: string,
-    user: any,
-    attachments: string[] = [],
-  ) {
     try {
-      const post = new this.postModel({
-        title,
-        content,
-        author: user.userId,
-        attachments,
-        status: PostStatus.PENDING,
+      const library = new this.libraryModel({
+        ...createLibraryDto,
+        createdBy: user.userId,
       });
-      const savedPost = await post.save();
-      return savedPost.populate('author');
+      
+      return await library.save();
     } catch (error) {
-      console.error('Error creating post:', error);
-      throw new InternalServerErrorException('Failed to create post');
+      throw new InternalServerErrorException('Failed to create library');
     }
   }
 
-  async getPosts(status?: PostStatus) {
+  async findAllLibraries(user: User): Promise<Library[]> {
     try {
-      const query = status ? { status } : {};
-      return await this.postModel.find(query).populate('author').exec();
-    } catch (error) {
-      console.error('Error getting posts:', error);
-      throw new InternalServerErrorException('Failed to get posts');
-    }
-  }
-
-  async getPostById(id: string) {
-    try {
-      const post = await this.postModel.findById(id).populate('author').exec();
-      if (!post) {
-        throw new NotFoundException('Post not found');
+      const isAdmin = user.role === UserRole.ADMIN;
+      
+      // If user is admin, return all libraries
+      if (isAdmin) {
+        return this.libraryModel.find().populate('createdBy').exec();
       }
-      return post;
+      
+      // Get libraries user has permission to access
+      const permissions = await this.permissionModel.find({ user: user.userId }).distinct('library');
+      
+      // Find all libraries that are either public or user has permission to
+      return this.libraryModel.find({
+        $or: [
+          { isPublic: true },
+          { _id: { $in: permissions } },
+          { createdBy: user.userId } // User's own libraries
+        ]
+      }).populate('createdBy').exec();
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      throw new InternalServerErrorException('Failed to fetch libraries');
+    }
+  }
+
+  async findLibraryById(id: string, user: User): Promise<Library> {
+    try {
+      const library = await this.libraryModel.findById(id).populate('createdBy').exec();
+      
+      if (!library) {
+        throw new NotFoundException('Library not found');
+      }
+      
+      const isAdmin = user.role === UserRole.ADMIN;
+      const isCreator = library.createdBy.toString() === user.userId.toString();
+      
+      // Check if user can access this library
+      if (isAdmin || isCreator) {
+        return library;
+      }
+      
+      // Check if user has permission
+      const permission = await this.permissionModel.findOne({
+        library: library._id,
+        user: user.userId
+      });
+      
+      if (!permission) {
+        throw new ForbiddenException('You do not have permission to access this library');
+      }
+      
+      return library;
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error;
       }
-      console.error('Error getting post by id:', error);
-      throw new InternalServerErrorException('Failed to get post');
+      throw new InternalServerErrorException('Failed to fetch library');
     }
   }
 
-  async updatePost(
-    id: string,
-    user: any,
-    updateData: {
-      title?: string;
-      content?: string;
-      attachments?: string[];
-    },
-  ) {
+  async updateLibrary(id: string, updateLibraryDto: UpdateLibraryDto, user: User): Promise<Library> {
     try {
-      console.log('Updating post with ID:', id);
-      console.log('User data:', user);
-
-      const post = await this.postModel.findById(id).populate('author');
-      if (!post) {
-        throw new NotFoundException('Post not found');
+      const library = await this.libraryModel.findById(id);
+      
+      if (!library) {
+        throw new NotFoundException('Library not found');
       }
-
-      console.log('Found post:', post);
-      console.log('Post author:', post.author);
-      console.log('Current user ID:', user.userId);
-
-      // Convert both IDs to strings for comparison
-      const authorId =
-        post.author instanceof Types.ObjectId
-          ? post.author.toString()
-          : (post.author as any)._id.toString();
-      const userId = user.userId.toString();
-
-      console.log('Comparing IDs:', { authorId, userId });
-
-      if (authorId !== userId) {
-        console.log('Authorization failed: IDs do not match');
-        throw new UnauthorizedException('Not authorized to update this post');
+      
+      const isAdmin = user.role === UserRole.ADMIN;
+      const isCreator = library.createdBy.toString() === user.userId.toString();
+      
+      if (!isAdmin && !isCreator) {
+        throw new ForbiddenException('You do not have permission to update this library');
       }
-
-      // Update using findOneAndUpdate for atomic operation
-      const updatedPost = await this.postModel
-        .findOneAndUpdate({ _id: id }, { $set: updateData }, { new: true })
-        .populate('author')
+      
+      const updatedLibrary = await this.libraryModel
+        .findByIdAndUpdate(id, updateLibraryDto, { new: true })
+        .populate('createdBy')
         .exec();
-
-      if (!updatedPost) {
-        throw new NotFoundException('Post not found after update');
+      
+      if (!updatedLibrary) {
+        throw new NotFoundException('Library not found after update');
       }
-
-      console.log('Post updated successfully:', updatedPost);
-      return updatedPost;
+      
+      return updatedLibrary;
     } catch (error) {
-      console.error('Error in updatePost:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof UnauthorizedException
-      ) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error;
       }
-      throw new InternalServerErrorException('Failed to update post');
+      throw new InternalServerErrorException('Failed to update library');
     }
   }
 
-  async deletePost(id: string, user: any) {
+  async deleteLibrary(id: string, user: User): Promise<void> {
     try {
-      console.log('Starting delete post process...');
-      console.log('Post ID:', id);
-      console.log('User data:', JSON.stringify(user));
-
-      // First find the post without population to get raw author ID
-      const post = await this.postModel.findById(id);
-      if (!post) {
-        throw new NotFoundException('Post not found');
+      const library = await this.libraryModel.findById(id);
+      
+      if (!library) {
+        throw new NotFoundException('Library not found');
       }
-
-      // Get raw author ID as string
-      const authorId = post.author.toString();
-      const userId = user.userId.toString();
-
-      console.log('Raw author ID:', authorId);
-      console.log('User ID:', userId);
-
-      // Compare raw IDs
-      if (authorId !== userId) {
-        console.log('Authorization failed - IDs do not match');
-        console.log('Author ID (post):', authorId);
-        console.log('User ID (request):', userId);
-        throw new UnauthorizedException('Not authorized to delete this post');
+      
+      const isAdmin = user.role === UserRole.ADMIN;
+      const isCreator = library.createdBy.toString() === user.userId.toString();
+      
+      if (!isAdmin && !isCreator) {
+        throw new ForbiddenException('You do not have permission to delete this library');
       }
-
-      console.log('Authorization successful - deleting post...');
-
-      // Delete the post
-      const deletedPost = await this.postModel.findByIdAndDelete(id).exec();
-
-      if (!deletedPost) {
-        throw new NotFoundException('Post not found during deletion');
-      }
-
-      console.log('Post deleted successfully');
-      return { message: 'Post deleted successfully' };
+      
+      // Delete the library
+      await this.libraryModel.findByIdAndDelete(id);
+      
+      // Delete all associated attachments
+      await this.attachmentModel.deleteMany({ library: id });
+      
+      // Delete all associated permissions
+      await this.permissionModel.deleteMany({ library: id });
     } catch (error) {
-      console.error('Error in deletePost:', error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof UnauthorizedException
-      ) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error;
       }
-      throw new InternalServerErrorException('Failed to delete post');
+      throw new InternalServerErrorException('Failed to delete library');
     }
   }
 
-  async approvePost(id: string, user: any) {
-    try {
-      const post = await this.postModel.findById(id);
-      if (!post) {
-        throw new NotFoundException('Post not found');
-      }
-
-      post.status = PostStatus.APPROVED;
-      post.approvedBy = user.userId;
-      post.approvedAt = new Date();
-      return await post.save();
-    } catch (error) {
-      console.error('Error approving post:', error);
-      throw new InternalServerErrorException('Failed to approve post');
-    }
-  }
-
-  // Media Management
-  async uploadMedia(
+  // Attachment methods
+  
+  async uploadAttachment(
     file: Express.Multer.File,
-    type: MediaType,
+    createAttachmentDto: CreateAttachmentDto,
     user: User,
-    description?: string,
-  ) {
-    const media = new this.mediaModel({
-      filename: file.filename,
-      originalName: file.originalname,
-      mimeType: file.mimetype,
-      size: file.size,
-      type,
-      uploadedBy: user.userId,
-      description,
-    });
-    return media.save();
-  }
-
-  async getMediaFiles(type?: MediaType) {
-    const query = type ? { type } : {};
-    return this.mediaModel.find(query).populate('uploadedBy').exec();
-  }
-
-  async getMediaById(id: string) {
-    const media = await this.mediaModel
-      .findById(id)
-      .populate('uploadedBy')
-      .exec();
-    if (!media) {
-      throw new NotFoundException('Media not found');
-    }
-    return media;
-  }
-
-  async deleteMedia(id: string, user: User) {
-    const media = await this.mediaModel.findById(id);
-    if (!media) {
-      throw new NotFoundException('Media not found');
-    }
-
-    if (media.uploadedBy.toString() !== user.userId) {
-      throw new UnauthorizedException('Not authorized to delete this media');
-    }
-
-    return this.mediaModel.findByIdAndDelete(id);
-  }
-
-  async create(createLibraryDto: CreateLibraryDto, user: User): Promise<Library> {
-    const library = new this.libraryModel({
-      id: uuidv4(),
-      ...createLibraryDto,
-      uploadedBy: user,
-      accessibleBy: [user],
-    });
-
-    return library.save();
-  }
-
-  async findAll(user: User): Promise<Library[]> {
-    if (user.role === UserRole.ADMIN || user.role === UserRole.MENTOR) {
-      return this.libraryModel.find().populate('uploadedBy').populate('accessibleBy').exec();
-    }
-    
-    return this.libraryModel.find({
-      accessibleBy: { $in: [user._id] },
-    }).populate('uploadedBy').populate('accessibleBy').exec();
-  }
-
-  async findOne(id: string, user: User): Promise<Library> {
-    const library = await this.libraryModel.findOne({ id })
-      .populate('uploadedBy')
-      .populate('accessibleBy')
-      .exec();
-    
-    if (!library) {
-      throw new NotFoundException(`Library resource with id ${id} not found`);
-    }
-
-    if (user.role !== UserRole.ADMIN && user.role !== UserRole.MENTOR) {
-      const hasAccess = library.accessibleBy.some(u => u['_id'].toString() === user['_id'].toString());
-      if (!hasAccess) {
-        throw new ForbiddenException('You do not have permission to access this resource');
-      }
-    }
-
-    return library;
-  }
-
-  async update(id: string, updateLibraryDto: UpdateLibraryDto, user: User): Promise<Library> {
-    const library = await this.libraryModel.findOne({ id })
-    
-    if (!library) {
-      throw new NotFoundException(`Library resource with id ${id} not found`);
-    }
-
-    if (user.role !== UserRole.ADMIN && user.role !== UserRole.MENTOR &&
-        library.uploadedBy.toString() !== user['_id'].toString()) {
-      throw new ForbiddenException('You do not have permission to update this resource');
-    }
-
-    return await library.updateOne(updateLibraryDto, { new: true }).exec();
-  }
-
-  async remove(id: string, user: User): Promise<Library> {
-    const library = await this.libraryModel.findOne({ id }).exec();
-    
-    if (!library) {
-      throw new NotFoundException(`Library resource with id ${id} not found`);
-    }
-
-    if (user.role !== UserRole.ADMIN && user.role !== UserRole.MENTOR &&
-        library.uploadedBy.toString() !== user['_id'].toString()) {
-      throw new ForbiddenException('You do not have permission to delete this resource');
-    }
-
-    await library.deleteOne();
-    return library;
-  }
-
-  async grantAccess(id: string, userId: string, grantedBy: User): Promise<Library> {
-    if (grantedBy.role !== UserRole.ADMIN && grantedBy.role !== UserRole.MENTOR) {
-      throw new ForbiddenException('Only admin and mentor can grant access to resources');
-    }
-
-    const library = await this.libraryModel.findOne({ id }).exec();
-    if (!library) {
-      throw new NotFoundException(`Library resource with id ${id} not found`);
-    }
-
-    const userIdExists = library.accessibleBy.some(u => u.toString() === userId);
-    if (!userIdExists) {
-      const updated = await this.libraryModel.findOneAndUpdate(
-        { id },
-        { $addToSet: { accessibleBy: userId } },
-        { new: true }
-      ).exec();
+  ): Promise<Attachment> {
+    try {
+      const library = await this.libraryModel.findById(createAttachmentDto.libraryId);
       
-      if (!updated) {
-        throw new NotFoundException(`Library resource with id ${id} not found after update`);
+      if (!library) {
+        throw new NotFoundException('Library not found');
       }
       
-      return updated;
+      const isAdmin = user.role === UserRole.ADMIN;
+      const isCreator = library.createdBy.toString() === user.userId.toString();
+      
+      // Check if user has write permission
+      const hasWritePermission = await this.permissionModel.findOne({
+        library: library._id,
+        user: user.userId,
+        type: { $in: [PermissionType.WRITE, PermissionType.ADMIN] }
+      });
+      
+      // Only library creator, admin, or users with write permission can upload
+      if (!isAdmin && !isCreator && !hasWritePermission) {
+        throw new ForbiddenException('You do not have permission to upload to this library');
+      }
+      
+      const attachment = new this.attachmentModel({
+        originalname: file.originalname,
+        url: file.path,
+        fileType: file.mimetype,
+        size: file.size,
+        library: new Types.ObjectId(createAttachmentDto.libraryId),
+        uploadedBy: user.userId,
+      });
+      
+      return await attachment.save();
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to upload attachment');
     }
-
-    return library;
   }
 
-  async revokeAccess(id: string, userId: string, revokedBy: User): Promise<Library> {
-    if (revokedBy.role !== UserRole.ADMIN && revokedBy.role !== UserRole.MENTOR) {
-      throw new ForbiddenException('Only admin and mentor can revoke access to resources');
+  async getAttachmentsByLibrary(libraryId: string, user: User): Promise<Attachment[]> {
+    try {
+      // First check if user has access to the library
+      await this.findLibraryById(libraryId, user);
+      
+      // Then return all attachments for that library
+      return this.attachmentModel.find({ library: libraryId })
+        .populate('uploadedBy')
+        .exec();
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to fetch attachments');
     }
+  }
 
-    const library = await this.libraryModel.findOne({ id }).exec();
-    if (!library) {
-      throw new NotFoundException(`Library resource with id ${id} not found`);
+  async deleteAttachment(id: string, user: User): Promise<void> {
+    try {
+      const attachment = await this.attachmentModel.findById(id).populate('library');
+      
+      if (!attachment) {
+        throw new NotFoundException('Attachment not found');
+      }
+      
+      const library = await this.libraryModel.findById(attachment.library);
+      
+      if (!library) {
+        throw new NotFoundException('Library not found');
+      }
+      
+      // Admin can delete any attachment
+      const isAdmin = user.role === UserRole.ADMIN;
+      
+      // Owner of the attachment can delete their own uploads
+      const isUploader = attachment.uploadedBy.toString() === user.userId.toString();
+      
+      // Creator of the library can delete any attachment in their library
+      const isLibraryCreator = library.createdBy.toString() === user.userId.toString();
+      
+      if (!isAdmin && !isUploader && !isLibraryCreator) {
+        throw new ForbiddenException('You do not have permission to delete this attachment. Only the owner of the attachment, library creator, or administrators can delete attachments.');
+      }
+      
+      await this.attachmentModel.findByIdAndDelete(id);
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to delete attachment');
     }
+  }
 
-    const updated = await this.libraryModel.findOneAndUpdate(
-      { id },
-      { $pull: { accessibleBy: userId } },
-      { new: true }
-    ).exec();
-    
-    if (!updated) {
-      throw new NotFoundException(`Library resource with id ${id} not found after update`);
+  // Permission methods
+  
+  async createPermission(createPermissionDto: CreatePermissionDto, user: User): Promise<Permission> {
+    try {
+      const library = await this.libraryModel.findById(createPermissionDto.libraryId);
+      
+      if (!library) {
+        throw new NotFoundException('Library not found');
+      }
+      
+      // Only admin or library creator can manage permissions
+      const isAdmin = user.role === UserRole.ADMIN;
+      const isCreator = library.createdBy.toString() === user.userId.toString();
+      
+      if (!isAdmin && !isCreator) {
+        throw new ForbiddenException('Only administrators and library creators can manage permissions.');
+      }
+      
+      // Check if permission already exists
+      const existingPermission = await this.permissionModel.findOne({
+        library: createPermissionDto.libraryId,
+        user: createPermissionDto.userId
+      });
+      
+      // If not admin, restrict to only granting READ permissions
+      if (!isAdmin && createPermissionDto.type !== PermissionType.READ) {
+        createPermissionDto.type = PermissionType.READ;
+      }
+      
+      if (existingPermission) {
+        // Update the permission instead
+        existingPermission.type = createPermissionDto.type;
+        return await existingPermission.save();
+      }
+      
+      // Create new permission
+      const permission = new this.permissionModel({
+        library: new Types.ObjectId(createPermissionDto.libraryId),
+        user: new Types.ObjectId(createPermissionDto.userId),
+        type: createPermissionDto.type,
+        grantedBy: user.userId
+      });
+      
+      return await permission.save();
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to create permission');
     }
-    
-    return updated;
+  }
+
+  async getPermissionsByLibrary(libraryId: string, user: User): Promise<Permission[]> {
+    try {
+      const library = await this.libraryModel.findById(libraryId);
+      
+      if (!library) {
+        throw new NotFoundException('Library not found');
+      }
+      
+      const isAdmin = user.role === UserRole.ADMIN;
+      const isCreator = library.createdBy.toString() === user.userId.toString();
+      
+      // Only library creator and admin can view permissions
+      if (!isAdmin && !isCreator) {
+        throw new ForbiddenException('Only administrators and library creators can view permissions for this library');
+      }
+      
+      return this.permissionModel.find({ library: libraryId })
+        .populate('user')
+        .populate('grantedBy')
+        .exec();
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to fetch permissions');
+    }
+  }
+  
+  async deletePermission(id: string, user: User): Promise<void> {
+    try {
+      const permission = await this.permissionModel.findById(id).populate('library');
+      
+      if (!permission) {
+        throw new NotFoundException('Permission not found');
+      }
+      
+      const library = await this.libraryModel.findById(permission.library);
+      
+      if (!library) {
+        throw new NotFoundException('Library not found');
+      }
+      
+      const isAdmin = user.role === UserRole.ADMIN;
+      const isCreator = library.createdBy.toString() === user.userId.toString();
+      
+      // Only library creator and admin can delete permissions
+      if (!isAdmin && !isCreator) {
+        throw new ForbiddenException('Only administrators and library creators can manage permissions');
+      }
+      
+      await this.permissionModel.findByIdAndDelete(id);
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to delete permission');
+    }
+  }
+
+  async updatePermission(
+    libraryId: string, 
+    userId: string, 
+    updatePermissionDto: UpdatePermissionDto, 
+    user: User
+  ): Promise<Permission> {
+    try {
+      const library = await this.libraryModel.findById(libraryId);
+      
+      if (!library) {
+        throw new NotFoundException('Library not found');
+      }
+      
+      // Only admin or library creator can update permissions
+      const isAdmin = user.role === UserRole.ADMIN;
+      const isCreator = library.createdBy.toString() === user.userId.toString();
+      
+      if (!isAdmin && !isCreator) {
+        throw new ForbiddenException('Only administrators and library creators can update permissions');
+      }
+      
+      // Find the existing permission
+      const existingPermission = await this.permissionModel.findOne({
+        library: libraryId,
+        user: userId
+      });
+      
+      if (!existingPermission) {
+        throw new NotFoundException('Permission not found for this user in the library');
+      }
+      
+      // If not admin and trying to set a higher level than READ, restrict to READ only
+      if (!isAdmin && updatePermissionDto.type !== PermissionType.READ) {
+        // Only admins can grant WRITE or ADMIN permissions
+        if (isCreator) {
+          // Library creators can grant up to WRITE permissions
+          if (updatePermissionDto.type === PermissionType.ADMIN) {
+            updatePermissionDto.type = PermissionType.WRITE;
+          }
+        } else {
+          // Normal users can only grant READ permissions
+          updatePermissionDto.type = PermissionType.READ;
+        }
+      }
+      
+      // Update the permission
+      existingPermission.type = updatePermissionDto.type;
+      
+      // Save the updated permission
+      return await existingPermission.save();
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to update permission');
+    }
   }
 }

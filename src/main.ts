@@ -8,9 +8,13 @@ import { AuthModule } from './auth/auth.module';
 import { LibraryModule } from './library/library.module';
 import { PostModule } from './post/post.module';
 import { NotificationModule } from './notification/notification.module';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
+import * as cookieParser from 'cookie-parser';
+import * as express from 'express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Enable CORS with specific options
   app.enableCors({
@@ -19,13 +23,26 @@ async function bootstrap() {
     credentials: true,
   });
 
+  // Cấu hình prefix cho tất cả các API routes
+  app.setGlobalPrefix('api');
+  
+  // Phục vụ tệp tĩnh từ thư mục public
+  app.useStaticAssets(join(__dirname, '..', 'public'));
+
+  // Sử dụng cookie parser
+  app.use(cookieParser());
+
+  // Static file middleware for serving uploads
+  app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
+
   // Add validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
-      transform: true,
       whitelist: true,
+      forbidNonWhitelisted: true,
     }),
   );
+
 
   const config = new DocumentBuilder()
     .setTitle('Club Management API')

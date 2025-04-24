@@ -16,18 +16,18 @@ export class AuthService {
     private jwtService: JwtService,
     private refreshTokenService: RefreshTokenService,
     private configService: ConfigService,
-  ) {}
+  ) { }
 
   async validateUser(email: string, password: string): Promise<any> {
     try {
       const user = await this.userService.findByEmail(email);
       const isPasswordValid = await bcrypt.compare(password, user.password);
-      
+
       if (isPasswordValid) {
         const { password, ...result } = user;
         return result;
       }
-      
+
       return null;
     } catch (error) {
       return null;
@@ -36,7 +36,7 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     const user = await this.validateUser(loginDto.email, loginDto.password);
-    
+
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -47,15 +47,15 @@ export class AuthService {
 
     // Create access token
     const accessToken = this.createAccessToken(user);
-    
+
     // Create refresh token
-    const refreshToken = await this.createRefreshToken(user.id);
+    const refreshToken = await this.createRefreshToken(user._id);
 
     return {
       access_token: accessToken,
       refresh_token: refreshToken.token,
       expires_in: 900, // 15 minutes in seconds
-      user: getInfoData(['id', 'name', 'email', 'role'], user)
+      user: getInfoData(['_id', 'name', 'email', 'role'], user)
     };
   }
 
@@ -68,37 +68,37 @@ export class AuthService {
 
     return {
       message: 'Registration successful. Please wait for account approval.',
-      user: getInfoData(['id', 'name', 'email'], user),
+      user: getInfoData(['_id', 'name', 'email'], user, "user_id"),
     };
   }
 
   async refreshToken(token: string) {
     // Validate the refresh token
     const refreshToken = await this.refreshTokenService.validateRefreshToken(token);
-    
+
     // Get the user
     const user = await this.userService.findById(refreshToken.userId);
-    
+
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    
+
     if (user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException('Account is not active');
     }
-    
+
     // Revoke the old refresh token
     await this.refreshTokenService.revokeToken(refreshToken.id);
-    
+
     // Create new tokens
     const accessToken = this.createAccessToken(user);
-    const newRefreshToken = await this.createRefreshToken(user.id);
-    
+    const newRefreshToken = await this.createRefreshToken(user._id);
+
     return {
       access_token: accessToken,
       refresh_token: newRefreshToken.token,
       expires_in: 900, // 15 minutes in seconds
-      user: getInfoData(['id', 'name', 'email', 'role'], user)
+      user: getInfoData(['_id', 'name', 'email', 'role'], user)
     };
   }
 
@@ -110,7 +110,7 @@ export class AuthService {
 
   async validateMicrosoftUser(profile: any) {
     const email = profile.emails[0].value;
-    
+
     try {
       // Try to find existing user
       const existingUser = await this.userService.findByEmail(email);
@@ -124,35 +124,67 @@ export class AuthService {
         role: UserRole.MEMBER,
         status: UserStatus.PENDING,
       });
-      
+
       return newUser;
     }
   }
 
-  generateToken(user: User) {
+  async validateGoogleUser(profile: any) {
+    const email = profile.emails[0].value;
+
+    try {
+      // Try to find existing user - if found, this is a login
+      const existingUser = await this.userService.findByEmail(email);
+      console.log('Existing user logged in via Google:', existingUser.email);
+      return existingUser;
+    } catch (error) {
+      // User not found - this is a registration
+      console.log('New user registering via Google:', email);
+      const newUser = await this.userService.create({
+        name: profile.displayName,
+        email: email,
+        phone: "",
+        address: "",
+        password: await bcrypt.hash(Math.random().toString(36).slice(-8), 10), // Random password
+        role: UserRole.MEMBER,
+        status: UserStatus.PENDING,
+      });
+
+      return newUser;
+    }
+  }
+
+  async generateToken(user: User) {
+    // Create access token
+    const accessToken = this.createAccessToken(user);
+
+    // Create refresh token
+    const refreshToken = await this.createRefreshToken(user._id);
+
     return {
-      access_token: this.createAccessToken(user),
-      user: getInfoData(['id', 'name', 'email', 'role'], user)
+      access_token: accessToken,
+      refresh_token: refreshToken.token,
+      user: getInfoData(['_id', 'name', 'email', 'role'], user)
     };
   }
 
   private createAccessToken(user: any): string {
     const payload = {
       email: user.email,
-      sub: user.id,
+      sub: user._id,
       role: user.role,
     };
-    
+
     return this.jwtService.sign(payload);
   }
 
   private async createRefreshToken(userId: string) {
     // Refresh token valid for 7 days (in seconds)
     const refreshTokenExpiry = 7 * 24 * 60 * 60;
-    
+
     // Revoke any existing refresh tokens
     await this.refreshTokenService.revokeAllUserTokens(userId);
-    
+
     // Create a new refresh token
     return this.refreshTokenService.createRefreshToken(userId, refreshTokenExpiry);
   }

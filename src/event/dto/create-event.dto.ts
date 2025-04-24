@@ -30,9 +30,4 @@ export class CreateEventDto {
   @ApiProperty({ description: 'The maximum number of participants', required: false })
   @IsOptional()
   maxParticipants?: number;
-
-  @ApiProperty({ description: 'Image URL for the event', required: false })
-  @IsOptional()
-  @IsString()
-  imageUrl?: string;
 } 

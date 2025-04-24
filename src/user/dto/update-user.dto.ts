@@ -23,13 +23,4 @@ export class UpdateUserDto {
   @IsString()
   address?: string;
 
-  @ApiProperty({ enum: UserRole, description: 'The role of the user', required: false })
-  @IsOptional()
-  @IsEnum(UserRole)
-  role?: UserRole;
-
-  @ApiProperty({ enum: UserStatus, description: 'The status of the user', required: false })
-  @IsOptional()
-  @IsEnum(UserStatus)
-  status?: UserStatus;
 } 

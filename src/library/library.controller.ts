@@ -18,10 +18,9 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { LibraryService } from './library.service';
-import { PostStatus } from './models/post.model';
-import { MediaType } from './models/media.model';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { User as UserDecorator } from '../auth/decorators/user.decorator';
 import { User } from '../auth/user.model';
@@ -30,10 +29,15 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { CreateLibraryDto } from './dto/create-library.dto';
 import { UpdateLibraryDto } from './dto/update-library.dto';
-import { Library } from './library.model';
+import { Library } from './models/library.model';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../user/user.model';
+import { CreateAttachmentDto } from './dto/create-attachment.dto';
+import { CreatePermissionDto } from './dto/create-permission.dto';
+import { Attachment } from './models/attachment.model';
+import { Permission } from './models/permission.model';
+import { UpdatePermissionDto } from './dto/update-permission.dto';
 
 @ApiTags('Library')
 @Controller('library')
@@ -42,151 +46,120 @@ import { UserRole } from '../user/user.model';
 export class LibraryController {
   constructor(private readonly libraryService: LibraryService) {}
 
-  // Post endpoints
-  @Post('posts')
-  @ApiOperation({ summary: 'Create a new post' })
-  @ApiResponse({ status: 201, description: 'Post created successfully' })
-  async createPost(
-    @Body() createPostDto: CreatePostDto,
-    @UserDecorator() user: User,
-  ) {
-    return this.libraryService.createPost(
-      createPostDto.title,
-      createPostDto.content,
-      user,
-      createPostDto.attachments,
-    );
-  }
 
-  @Get('posts')
-  @ApiOperation({ summary: 'Get all posts' })
-  async getPosts(@Query('status') status?: PostStatus) {
-    return this.libraryService.getPosts(status);
-  }
-
-  @Get('posts/:id')
-  @ApiOperation({ summary: 'Get post by ID' })
-  async getPost(@Param('id') id: string) {
-    return this.libraryService.getPostById(id);
-  }
-
-  @Put('posts/:id')
-  @ApiOperation({ summary: 'Update a post' })
-  @ApiResponse({ status: 200, description: 'Post updated successfully' })
-  async updatePost(
-    @Param('id') id: string,
-    @Body() updatePostDto: UpdatePostDto,
-    @UserDecorator() user: User,
-  ) {
-    return this.libraryService.updatePost(id, user, updatePostDto);
-  }
-
-  @Delete('posts/:id')
-  @ApiOperation({ summary: 'Delete a post' })
-  @ApiResponse({ status: 200, description: 'Post deleted successfully' })
-  async deletePost(@Param('id') id: string, @UserDecorator() user: User) {
-    return this.libraryService.deletePost(id, user);
-  }
-
-  @Put('posts/:id/approve')
-  @ApiOperation({ summary: 'Approve a post' })
-  async approvePost(@Param('id') id: string, @UserDecorator() user: User) {
-    return this.libraryService.approvePost(id, user);
-  }
-
-  // Media endpoints
-  @Post('upload')
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Upload media file' })
-  async uploadMedia(
-    @UploadedFile() file: Express.Multer.File,
-    @Body('type') type: MediaType,
-    @UserDecorator() user: User,
-    @Body('description') description?: string,
-  ) {
-    return this.libraryService.uploadMedia(file, type, user, description);
-  }
-
-  @Get('media')
-  @ApiOperation({ summary: 'Get all media files' })
-  async getMediaFiles(@Query('type') type?: MediaType) {
-    return this.libraryService.getMediaFiles(type);
-  }
-
-  @Get('media/:id')
-  @ApiOperation({ summary: 'Get media by ID' })
-  async getMedia(@Param('id') id: string) {
-    return this.libraryService.getMediaById(id);
-  }
-
-  @Delete('media/:id')
-  @ApiOperation({ summary: 'Delete media' })
-  async deleteMedia(@Param('id') id: string, @UserDecorator() user: User) {
-    return this.libraryService.deleteMedia(id, user);
-  }
-
+  // Library endpoints
   @Post()
-  @ApiOperation({ summary: 'Create a new library resource' })
-  @ApiResponse({ status: 201, description: 'Resource created successfully', type: Library })
-  async createLibraryResource(@Body() createLibraryDto: CreateLibraryDto, @Request() req): Promise<Library> {
-    return this.libraryService.create(createLibraryDto, req.user);
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Create a new library (admin only)' })
+  @ApiResponse({ status: 201, description: 'Library created successfully', type: Library })
+  async createLibrary(
+    @Body() createLibraryDto: CreateLibraryDto, 
+    @UserDecorator() user: User
+  ): Promise<Library> {
+    return this.libraryService.createLibrary(createLibraryDto, user);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all accessible library resources' })
-  @ApiResponse({ status: 200, description: 'List of accessible resources', type: [Library] })
-  async findAllLibraryResources(@Request() req): Promise<Library[]> {
-    return this.libraryService.findAll(req.user);
+  @ApiOperation({ summary: 'Get all accessible libraries' })
+  @ApiResponse({ status: 200, description: 'List of accessible libraries', type: [Library] })
+  async findAllLibraries(@UserDecorator() user: User): Promise<Library[]> {
+    return this.libraryService.findAllLibraries(user);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a library resource by id' })
-  @ApiResponse({ status: 200, description: 'Resource details', type: Library })
-  async findLibraryResource(@Param('id') id: string, @Request() req): Promise<Library> {
-    return this.libraryService.findOne(id, req.user);
+  @ApiOperation({ summary: 'Get a library by id' })
+  @ApiResponse({ status: 200, description: 'Library details', type: Library })
+  async findLibrary(@Param('id') id: string, @UserDecorator() user: User): Promise<Library> {
+    return this.libraryService.findLibraryById(id, user);
   }
 
   @Put(':id')
-  @ApiOperation({ summary: 'Update a library resource' })
-  @ApiResponse({ status: 200, description: 'Resource updated successfully', type: Library })
-  async updateLibraryResource(
+  @ApiOperation({ summary: 'Update a library' })
+  @ApiResponse({ status: 200, description: 'Library updated successfully', type: Library })
+  async updateLibrary(
     @Param('id') id: string, 
     @Body() updateLibraryDto: UpdateLibraryDto,
-    @Request() req
+    @UserDecorator() user: User
   ): Promise<Library> {
-    return this.libraryService.update(id, updateLibraryDto, req.user);
+    return this.libraryService.updateLibrary(id, updateLibraryDto, user);
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete a library resource' })
-  @ApiResponse({ status: 200, description: 'Resource deleted successfully' })
-  async removeLibraryResource(@Param('id') id: string, @Request() req): Promise<Library> {
-    return this.libraryService.remove(id, req.user);
+  @ApiOperation({ summary: 'Delete a library' })
+  @ApiResponse({ status: 200, description: 'Library deleted successfully' })
+  async deleteLibrary(@Param('id') id: string, @UserDecorator() user: User): Promise<void> {
+    return this.libraryService.deleteLibrary(id, user);
   }
 
-  @Put(':id/grant-access/:userId')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.MENTOR)
-  @ApiOperation({ summary: 'Grant access to a user' })
-  @ApiResponse({ status: 200, description: 'Access granted successfully', type: Library })
-  async grantAccess(
+  // Attachment endpoints
+  @Post(':id/attachments')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload an attachment to a library' })
+  @ApiResponse({ status: 201, description: 'Attachment uploaded successfully', type: Attachment })
+  async uploadAttachment(
     @Param('id') id: string,
-    @Param('userId') userId: string,
-    @Request() req
-  ): Promise<Library> {
-    return this.libraryService.grantAccess(id, userId, req.user);
+    @UploadedFile() file: Express.Multer.File,
+    @Body() createAttachmentDto: CreateAttachmentDto,
+    @UserDecorator() user: User,
+  ): Promise<Attachment> {
+    // Override libraryId with the path param
+    createAttachmentDto.libraryId = id;
+    return this.libraryService.uploadAttachment(file, createAttachmentDto, user);
   }
 
-  @Put(':id/revoke-access/:userId')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.MENTOR)
-  @ApiOperation({ summary: 'Revoke access from a user' })
-  @ApiResponse({ status: 200, description: 'Access revoked successfully', type: Library })
-  async revokeAccess(
+  @Get(':id/attachments')
+  @ApiOperation({ summary: 'Get all attachments in a library' })
+  @ApiResponse({ status: 200, description: 'List of attachments', type: [Attachment] })
+  async getAttachments(@Param('id') id: string, @UserDecorator() user: User): Promise<Attachment[]> {
+    return this.libraryService.getAttachmentsByLibrary(id, user);
+  }
+
+  @Delete('attachments/:id')
+  @ApiOperation({ summary: 'Delete an attachment' })
+  @ApiResponse({ status: 200, description: 'Attachment deleted successfully' })
+  async deleteAttachment(@Param('id') id: string, @UserDecorator() user: User): Promise<void> {
+    return this.libraryService.deleteAttachment(id, user);
+  }
+
+  // Permission endpoints
+  @Post(':id/permissions')
+  @ApiOperation({ summary: 'Grant permission to a user for a library' })
+  @ApiResponse({ status: 201, description: 'Permission granted successfully', type: Permission })
+  async createPermission(
+    @Param('id') id: string,
+    @Body() createPermissionDto: CreatePermissionDto,
+    @UserDecorator() user: User,
+  ): Promise<Permission> {
+    // Override libraryId with the path param
+    createPermissionDto.libraryId = id;
+    return this.libraryService.createPermission(createPermissionDto, user);
+  }
+
+  @Get(':id/permissions')
+  @ApiOperation({ summary: 'Get all permissions for a library' })
+  @ApiResponse({ status: 200, description: 'List of permissions', type: [Permission] })
+  async getPermissions(@Param('id') id: string, @UserDecorator() user: User): Promise<Permission[]> {
+    return this.libraryService.getPermissionsByLibrary(id, user);
+  }
+
+  @Delete('permissions/:id')
+  @ApiOperation({ summary: 'Delete a permission' })
+  @ApiResponse({ status: 200, description: 'Permission deleted successfully' })
+  async deletePermission(@Param('id') id: string, @UserDecorator() user: User): Promise<void> {
+    return this.libraryService.deletePermission(id, user);
+  }
+
+  @Put(':id/permissions/:userId')
+  @ApiOperation({ summary: 'Update permission for a specific user' })
+  @ApiResponse({ status: 200, description: 'Permission updated successfully', type: Permission })
+  async updatePermission(
     @Param('id') id: string,
     @Param('userId') userId: string,
-    @Request() req
-  ): Promise<Library> {
-    return this.libraryService.revokeAccess(id, userId, req.user);
+    @Body() updatePermissionDto: UpdatePermissionDto,
+    @UserDecorator() user: User,
+  ): Promise<Permission> {
+    return this.libraryService.updatePermission(id, userId, updatePermissionDto, user);
   }
 }

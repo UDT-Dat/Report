@@ -9,15 +9,27 @@ import {
   Query,
   UseGuards,
   Request,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  UseFilters,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { Event } from './event.model';
 import { EventService } from './event.service';
-import { CreateEventDto, UpdateEventDto } from './dto/event.dto';
+import { CreateEventDto } from './dto/create-event.dto';
+import { UpdateEventDto } from './dto/update-event.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../user/user.model';
+import { MulterExceptionFilter } from 'src/common/filters/multer-exception.filter';
 
 @ApiTags('Events')
 @Controller('events')
@@ -57,20 +69,106 @@ export class EventController {
   @Post()
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
+  @UseFilters(MulterExceptionFilter)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+      },
+      fileFilter: (req, file, cb) => {
+        // Kiểm tra loại file có phải là hình ảnh không
+        if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif)$/)) {
+          return cb(
+            new BadRequestException('Only image files are allowed (jpg, jpeg, png, gif)'),
+            false
+          );
+        }
+        cb(null, true);
+      },
+    }),
+  )
   @ApiOperation({ summary: 'Create a new event' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+        title: { type: 'string' },
+        description: { type: 'string' },
+        location: { type: 'string' },
+        startDate: { type: 'string', format: 'date-time' },
+        endDate: { type: 'string', format: 'date-time' },
+        maxParticipants: { type: 'number' },
+      },
+    },
+  })
   @ApiResponse({
     status: 201,
     description: 'Event created successfully',
     type: Event,
   })
-  async create(@Body() createEventDto: CreateEventDto, @Request() req): Promise<Event> {
-    return this.eventService.create(createEventDto, req.user);
+  async create(
+    @Body() createEventDto: CreateEventDto,
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req
+  ): Promise<Event> {
+    if (!file) {
+      throw new BadRequestException('Image file is required for event creation');
+    }
+    return this.eventService.create({
+      ...createEventDto,
+    }, file.path, req.user);
   }
 
   @Put(':id')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Update an existing event' })
+  @UseFilters(MulterExceptionFilter)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+      },
+      fileFilter: (req, file, cb) => {
+        console.log('🔥 fileFilter triggered'); 
+        console.log(file)
+        if (!file) {
+          return cb(null, true);
+        }
+        // Kiểm tra loại file có phải là hình ảnh không
+        if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif)$/)) {
+          return cb(
+            new BadRequestException('Only image files are allowed (jpg, jpeg, png, gif)'),
+            false
+          );
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+        title: { type: 'string' },
+        description: { type: 'string' },
+        location: { type: 'string' },
+        startDate: { type: 'string', format: 'date-time' },
+        endDate: { type: 'string', format: 'date-time' },
+        maxParticipants: { type: 'number' },
+      },
+    },
+  })
   @ApiResponse({
     status: 200,
     description: 'Event updated successfully',
@@ -80,9 +178,13 @@ export class EventController {
   async update(
     @Param('id') id: string,
     @Body() updateEventDto: UpdateEventDto,
-    @Request() req
+    @Request() req,
+    @UploadedFile() file?: Express.Multer.File,
   ): Promise<Event> {
-    return this.eventService.update(id, updateEventDto, req.user);
+    if (file && typeof file === 'string') {
+      file = undefined;
+    }
+    return this.eventService.update(id, updateEventDto, file, req.user);
   }
 
   @Delete(':id')
@@ -92,6 +194,7 @@ export class EventController {
   @ApiResponse({ status: 200, description: 'Event deleted successfully' })
   @ApiResponse({ status: 404, description: 'Event not found' })
   async remove(@Param('id') id: string, @Request() req): Promise<Event> {
+    
     return this.eventService.remove(id, req.user);
   }
 

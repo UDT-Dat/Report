@@ -14,6 +14,8 @@ export enum EventStatus {
 
 @Schema({ timestamps: true })
 export class Event {
+  @Prop({ type: MongooseSchema.Types.ObjectId, auto: true })
+  _id: string;
   @ApiProperty({ description: 'The title of the event' })
   @Prop({ required: true })
   title: string;
@@ -47,7 +49,7 @@ export class Event {
   participants: User[];
 
   @ApiProperty({ description: 'Image URL for the event' })
-  @Prop()
+  @Prop({ required: true })
   imageUrl: string;
 
 }
