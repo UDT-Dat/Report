@@ -23,6 +23,9 @@ export class Library {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   createdBy: User;
 
+  @ApiProperty({ description: 'The admin who created the library' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
+  lastUpdateBy: User;
 
   @ApiProperty({ description: 'The timestamp when the library was created' })
   createdAt: Date;

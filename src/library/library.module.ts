@@ -7,6 +7,7 @@ import { LibraryService } from './library.service';
 import { Library, LibrarySchema } from './models/library.model';
 import { Attachment, AttachmentSchema } from './models/attachment.model';
 import { Permission, PermissionSchema } from './models/permission.model';
+import { extname } from 'path';
 
 @Module({
   imports: [
@@ -17,11 +18,12 @@ import { Permission, PermissionSchema } from './models/permission.model';
     ]),
     MulterModule.register({
       storage: diskStorage({
-        destination: './uploads',
+        destination: './uploads/attachments',
         filename: (req, file, cb) => {
           const uniqueSuffix =
             Date.now() + '-' + Math.round(Math.random() * 1e9);
-          cb(null, `${file.fieldname}-${uniqueSuffix}`);
+          const ext = extname(file.originalname);
+          cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
         },
       }),
     }),
@@ -30,4 +32,4 @@ import { Permission, PermissionSchema } from './models/permission.model';
   providers: [LibraryService],
   exports: [LibraryService],
 })
-export class LibraryModule {}
+export class LibraryModule { }
