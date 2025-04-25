@@ -6,6 +6,7 @@ import { Notification, NotificationDocument, NotificationType } from './notifica
 import { User } from '../user/user.model';
 import { MailService } from './mail.service';
 import { TemplateHelper } from './template.helper';
+import { toObjectId } from 'src/common/utils';
 
 @Injectable()
 export class NotificationService {
@@ -42,13 +43,13 @@ export class NotificationService {
   }
 
   async findAllForUser(userId: string): Promise<Notification[]> {
-    return this.notificationModel.find({ user: userId })
+    return this.notificationModel.find({ user: toObjectId(userId) })
       .sort({ createdAt: -1 })
-      .exec();
+      .lean();
   }
 
   async findOne(id: string): Promise<Notification> {
-    const notification = await this.notificationModel.findOne({ id }).exec();
+    const notification = await this.notificationModel.findById(id).lean();
     
     if (!notification) {
       throw new NotFoundException(`Notification with id ${id} not found`);
@@ -58,7 +59,7 @@ export class NotificationService {
   }
 
   async markAsRead(id: string): Promise<Notification> {
-    const notification = await this.notificationModel.findOne({ id }).exec();
+    const notification = await this.notificationModel.findById(id).exec();
     
     if (!notification) {
       throw new NotFoundException(`Notification with id ${id} not found`);
@@ -70,13 +71,13 @@ export class NotificationService {
 
   async markAllAsRead(userId: string): Promise<void> {
     await this.notificationModel.updateMany(
-      { user: userId, isRead: false },
+      { user: toObjectId(userId), isRead: false },
       { isRead: true }
     ).exec();
   }
 
   async remove(id: string): Promise<Notification> {
-    const notification = await this.notificationModel.findOneAndDelete({ id }).exec();
+    const notification = await this.notificationModel.findByIdAndDelete(id).lean();
     
     if (!notification) {
       throw new NotFoundException(`Notification with id ${id} not found`);
@@ -103,10 +104,9 @@ export class NotificationService {
     }
   }
 
-  async createLibraryAccessNotification(resourceId: string, resourceTitle: string, user: User): Promise<void> {
+  async createLibraryAccessNotification(resourceId: string, resourceTitle: string, user: any): Promise<void> {
     const title = 'Library Access Granted';
     const message = `You have been granted access to "${resourceTitle}" in the library.`;
-    
     await this.create(title, message, NotificationType.LIBRARY_ACCESS, user, resourceId);
   }
 

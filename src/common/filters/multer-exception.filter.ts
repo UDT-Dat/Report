@@ -15,7 +15,6 @@ import {
       const ctx = host.switchToHttp();
       const response = ctx.getResponse<Response>();
       const request = ctx.getRequest<Request>();
-      console.log(error)
       let status = HttpStatus.BAD_REQUEST;
       let message = 'File upload error';
       

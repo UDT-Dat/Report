@@ -5,15 +5,16 @@ import { diskStorage } from 'multer';
 import { LibraryController } from './library.controller';
 import { LibraryService } from './library.service';
 import { Library, LibrarySchema } from './models/library.model';
-import { Attachment, AttachmentSchema } from './models/attachment.model';
 import { Permission, PermissionSchema } from './models/permission.model';
 import { extname } from 'path';
+import { AttachmentService } from 'src/attachment/attachment.service';
+import { AttachmentModule } from 'src/attachment/attachment.module';
+import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Library.name, schema: LibrarySchema },
-      { name: Attachment.name, schema: AttachmentSchema },
       { name: Permission.name, schema: PermissionSchema }
     ]),
     MulterModule.register({
@@ -27,6 +28,8 @@ import { extname } from 'path';
         },
       }),
     }),
+    AttachmentModule,
+    NotificationModule
   ],
   controllers: [LibraryController],
   providers: [LibraryService],

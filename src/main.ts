@@ -27,7 +27,7 @@ async function bootstrap() {
   });
 
   // Cấu hình prefix cho tất cả các API routes
-  // app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api');
 
   // Phục vụ tệp tĩnh từ thư mục public
   app.useStaticAssets(join(__dirname, '..', 'public'));

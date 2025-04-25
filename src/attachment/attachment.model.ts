@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
-import { User } from '../../auth/user.model';
+import { User } from '../user/user.model';
 
 export type AttachmentDocument = Attachment & Document;
 
@@ -23,9 +23,13 @@ export class Attachment {
   @Prop({ required: true })
   size: number;
 
-  @ApiProperty({ description: 'The library this attachment belongs to' })
-  @Prop({ type: Types.ObjectId, ref: 'Library', required: true })
-  library: Types.ObjectId;
+  @ApiProperty({ description: 'Owner type: Post or Library' })
+  @Prop({ required: true, enum: ['Post', 'Library'] })
+  ownerType: 'Post' | 'Library';
+
+  @ApiProperty({ description: 'The object ID of the owner (post or library)' })
+  @Prop({ type: Types.ObjectId, required: true })
+  ownerId: Types.ObjectId;
 
   @ApiProperty({ description: 'The user who uploaded the file' })
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })

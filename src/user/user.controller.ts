@@ -42,7 +42,6 @@ export class UserController {
         type: String
     })
     @ApiResponse({ status: 200, description: 'List of all users', type: [User] })
-
     async findAll(@Query() query: any): Promise<User[]> {
         const validatedQuery = await this.userQueryPipe.transform(query.filter);
         return this.userService.findAll(validatedQuery);

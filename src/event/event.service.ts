@@ -40,7 +40,10 @@ export class EventService {
     return this.eventModel.find(filter)
       .limit(pagination.size)
       .skip((pagination.page - 1) * pagination.size)
-      .populate('createdBy')
+      .populate({
+        path: 'createdBy',
+        select: 'name email _id phone address'
+      })
       .populate('participants')
       .exec();
   }

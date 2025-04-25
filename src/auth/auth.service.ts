@@ -8,6 +8,7 @@ import { RegisterDto } from './dto/register.dto';
 import { User, UserRole, UserStatus } from '../user/user.model';
 import { RefreshTokenService } from './refresh-token.service';
 import { getInfoData } from '../common/utils';
+import { NotificationService } from 'src/notification/notification.service';
 
 @Injectable()
 export class AuthService {

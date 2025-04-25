@@ -21,9 +21,6 @@ export class Permission {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   user: Types.ObjectId;
 
-  @ApiProperty({ description: 'The type of permission' })
-  @Prop({ required: true, enum: PermissionType, default: PermissionType.READ })
-  type: PermissionType;
 
   @ApiProperty({ description: 'The user who granted this permission' })
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })

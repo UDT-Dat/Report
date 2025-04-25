@@ -8,11 +8,14 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import convertParam from 'src/common/utils/convert-params';
 import { getInfoData } from 'src/common/utils';
+import { NotificationService } from 'src/notification/notification.service';
 
 @Injectable()
 export class UserService {
     constructor(
         @InjectModel(User.name) private userModel: Model<UserDocument>,
+        private notificationService: NotificationService
+
     ) { }
 
     async create(createUserDto: CreateUserDto, currentUser?: User): Promise<User> {
@@ -100,6 +103,7 @@ export class UserService {
         }
 
         user.status = UserStatus.ACTIVE;
+        this.notificationService.createAccountApprovedNotification(user)
         return user.save();
     }
 

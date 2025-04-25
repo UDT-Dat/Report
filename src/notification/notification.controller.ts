@@ -15,7 +15,7 @@ export class NotificationController {
   @ApiOperation({ summary: 'Get all notifications for the current user' })
   @ApiResponse({ status: 200, description: 'List of notifications', type: [Notification] })
   async findAll(@Request() req): Promise<Notification[]> {
-    return this.notificationService.findAllForUser(req.user._id);
+    return this.notificationService.findAllForUser(req.user.userId);
   }
 
   @Get(':id')
@@ -36,7 +36,7 @@ export class NotificationController {
   @ApiOperation({ summary: 'Mark all notifications as read' })
   @ApiResponse({ status: 200, description: 'All notifications marked as read' })
   async markAllAsRead(@Request() req): Promise<void> {
-    return this.notificationService.markAllAsRead(req.user._id);
+    return this.notificationService.markAllAsRead(req.user.userId);
   }
 
   @Delete(':id')

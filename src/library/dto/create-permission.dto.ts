@@ -7,8 +7,4 @@ export class CreatePermissionDto {
   @IsNotEmpty()
   @IsString()
   userId: string;
-
-  @ApiProperty({ description: 'The type of permission', enum: PermissionType, default: PermissionType.READ })
-  @IsEnum(PermissionType)
-  type: PermissionType = PermissionType.READ;
 } 

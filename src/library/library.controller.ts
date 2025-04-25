@@ -21,6 +21,7 @@ import {
   ApiBearerAuth,
   ApiConsumes,
   ApiBody,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { LibraryService } from './library.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -34,22 +35,29 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../user/user.model';
 import { CreatePermissionDto } from './dto/create-permission.dto';
-import { Attachment } from './models/attachment.model';
 import { Permission } from './models/permission.model';
-import { UpdatePermissionDto } from './dto/update-permission.dto';
+import { QueryValidationPipe } from 'src/common/pipes/query-validation.pipe';
+import { Attachment } from 'src/attachment/attachment.model';
 
 @ApiTags('Library')
 @Controller('library')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class LibraryController {
-  constructor(private readonly libraryService: LibraryService) { }
+  private readonly acttachmentQueryPipe: QueryValidationPipe;
+  constructor(private readonly libraryService: LibraryService) {
+    this.acttachmentQueryPipe = new QueryValidationPipe(
+      [], // allowedAttributes
+      [], // allowedOperators (giới hạn chỉ cho phép một số toán tử)
+      [] // eqOnlyFields (status chỉ được dùng với toán tử eq)
+    );
+  }
 
 
   // Library endpoints
   @Post()
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.MENTOR)
   @ApiOperation({ summary: 'Create a new library (admin only)' })
   @ApiResponse({ status: 201, description: 'Library created successfully', type: Library })
   async createLibrary(
@@ -74,6 +82,8 @@ export class LibraryController {
   }
 
   @Put(':id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MENTOR)
   @ApiOperation({ summary: 'Update a library' })
   @ApiResponse({ status: 200, description: 'Library updated successfully', type: Library })
   async updateLibrary(
@@ -85,6 +95,8 @@ export class LibraryController {
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MENTOR)
   @ApiOperation({ summary: 'Delete a library' })
   @ApiResponse({ status: 200, description: 'Library deleted successfully' })
   async deleteLibrary(@Param('id') id: string, @UserDecorator() user: User): Promise<void> {
@@ -116,26 +128,35 @@ export class LibraryController {
     @UploadedFiles() files: Express.Multer.File[],
     @UserDecorator() user: User,
   ): Promise<Attachment[]> {
-    console.log(files)
     return this.libraryService.uploadAttachment({ files, libraryId: id, user });
   }
 
   @Get(':id/attachments')
+
   @ApiOperation({ summary: 'Get all attachments in a library' })
   @ApiResponse({ status: 200, description: 'List of attachments', type: [Attachment] })
-  async getAttachments(@Param('id') id: string, @UserDecorator() user: User): Promise<Attachment[]> {
-    return this.libraryService.getAttachmentsByLibrary(id, user);
+  @ApiQuery({
+    name: 'filter',
+    required: false,
+    description: 'Filter query in JSON format or query string format. Examples: {"username_like":"john"} or username_like=john&email=test@example.com',
+    type: String
+  })
+  async getAttachments(@Param('id') id: string, @Query() query: any, @UserDecorator() user: User): Promise<Attachment[]> {
+    const validatedQuery = await this.acttachmentQueryPipe.transform(query.filter);
+    return this.libraryService.getAttachmentsByLibrary(id, validatedQuery, user);
   }
 
   @Delete('attachments/:id')
   @ApiOperation({ summary: 'Delete an attachment' })
   @ApiResponse({ status: 200, description: 'Attachment deleted successfully' })
-  async deleteAttachment(@Param('id') id: string, @UserDecorator() user: User): Promise<void> {
-    return this.libraryService.deleteAttachment(id, user);
+  async deleteAttachment(@Param('id') id: string, @UserDecorator() user: User): Promise<Attachment | null> {
+    return await this.libraryService.deleteAttachment(id, user);
   }
 
   // Permission endpoints
   @Post(':id/permissions')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MENTOR)
   @ApiOperation({ summary: 'Grant permission to a user for a library' })
   @ApiResponse({ status: 201, description: 'Permission granted successfully', type: Permission })
   async createPermission(
@@ -148,6 +169,8 @@ export class LibraryController {
   }
 
   @Get(':id/permissions')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MENTOR)
   @ApiOperation({ summary: 'Get all permissions for a library' })
   @ApiResponse({ status: 200, description: 'List of permissions', type: [Permission] })
   async getPermissions(@Param('id') id: string, @UserDecorator() user: User): Promise<Permission[]> {
@@ -155,21 +178,12 @@ export class LibraryController {
   }
 
   @Delete('permissions/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MENTOR)
   @ApiOperation({ summary: 'Delete a permission' })
   @ApiResponse({ status: 200, description: 'Permission deleted successfully' })
-  async deletePermission(@Param('id') id: string, @UserDecorator() user: User): Promise<void> {
-    return this.libraryService.deletePermission(id, user);
+  async deletePermission(@Param('id') id: string, @UserDecorator() user: User): Promise<Permission | null> {
+    return await this.libraryService.deletePermission(id, user);
   }
 
-  @Put(':id/permissions/:userId')
-  @ApiOperation({ summary: 'Update permission for a specific user' })
-  @ApiResponse({ status: 200, description: 'Permission updated successfully', type: Permission })
-  async updatePermission(
-    @Param('id') id: string,
-    @Param('userId') userId: string,
-    @Body() updatePermissionDto: UpdatePermissionDto,
-    @UserDecorator() user: User,
-  ): Promise<Permission> {
-    return this.libraryService.updatePermission(id, userId, updatePermissionDto, user);
-  }
 }

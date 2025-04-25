@@ -29,9 +29,22 @@ export class Library {
 
   @ApiProperty({ description: 'The timestamp when the library was created' })
   createdAt: Date;
-
   @ApiProperty({ description: 'The timestamp when the library was last updated' })
   updatedAt: Date;
+
+  attachments?: any[];
+
 }
 
-export const LibrarySchema = SchemaFactory.createForClass(Library); 
+
+const LibrarySchema = SchemaFactory.createForClass(Library);
+LibrarySchema.virtual('attachments', {
+  ref: 'Attachment',
+  localField: '_id',
+  foreignField: 'ownerId',
+  justOne: false,
+  options: { match: { ownerType: 'Library' } },
+});
+LibrarySchema.set('toObject', { virtuals: true });
+LibrarySchema.set('toJSON', { virtuals: true });
+export { LibrarySchema };
