@@ -130,7 +130,6 @@ export class LibraryService {
 
       const isAdmin = [UserRole.ADMIN, UserRole.MENTOR].includes(user.role as UserRole);
       const isCreator = library.createdBy.toString() === user.userId.toString();
-      console.log(isCreator,isAdmin,!isAdmin && !isCreator)
       if (!isAdmin || !isCreator) {
         throw new ForbiddenException('You do not have permission to update this library');
       }
@@ -214,7 +213,6 @@ export class LibraryService {
 
       return attachments;
     } catch (error) {
-      console.log(error)
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error;
       }
@@ -324,7 +322,6 @@ export class LibraryService {
 
       return permission;
     } catch (error) {
-      console.log(error)
       if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof BadRequestException) {
         throw error;
       }

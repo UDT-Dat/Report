@@ -92,7 +92,6 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Google OAuth callback URL - handles both new and returning users' })
   async googleAuthCallback(@Request() req, @Res() res: Response) {
-    console.log(req.user)
     const tokenData = await this.authService.generateToken(req.user);
 
     // Set refresh token in HttpOnly cookie

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,6 +11,7 @@ import { UserRole } from 'src/user/user.model';
 import { AttachmentService } from 'src/attachment/attachment.service';
 import { toObjectId } from 'src/common/utils';
 import { Attachment } from 'src/attachment/attachment.model';
+import convertParam from 'src/common/utils/convert-params';
 
 @Injectable()
 export class PostService {
@@ -41,13 +42,19 @@ export class PostService {
     return post;
   }
 
-  async findAll(): Promise<Post[]> {
-    return this.postModel.find()
+  async findAll(query: object): Promise<Post[]> {
+    const { result: filter, errors, pagination } = convertParam(query)
+    if (errors.length > 0) {
+      throw new BadRequestException(errors.join("."))
+    }
+    return this.postModel.find({
+      ...filter
+    }).limit(pagination.size).skip((pagination.page - 1) * pagination.size)
       .populate({
         path: 'createdBy',
         select: "-password -__v"
       })
-      .exec();
+      .lean();
   }
 
   async findOne(id: string): Promise<Post> {
@@ -78,7 +85,6 @@ export class PostService {
     }
 
     let updateData = { ...updatePostDto, ...(bannerImage ? { bannerImage: bannerImage.path } : {}) };
-    console.log(updatePostDto)
     // Handle removal of attachments
     if (updatePostDto.removeAttachments && updatePostDto.removeAttachments.length > 0) {
       for (const attachmentId of updatePostDto.removeAttachments) {

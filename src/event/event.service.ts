@@ -16,7 +16,6 @@ export class EventService {
   ) { }
 
   async create(createEventDto: CreateEventDto, imageUrl: string, user: any): Promise<Event> {
-    console.log("events user:", user)
     if (user.role !== UserRole.ADMIN) {
       throw new ForbiddenException('Only admins can create events');
     }
@@ -108,7 +107,6 @@ export class EventService {
     if (!event) {
       throw new NotFoundException(`Event with id ${id} not found`);
     }
-    console.log(user)
     const isParticipant = event.participants.some(p => p.toString() === user['userId']?.toString());
     if (isParticipant) {
       throw new ConflictException('You have already joined this event');
@@ -123,7 +121,6 @@ export class EventService {
   }
 
   async leaveEvent(id: string, user: any): Promise<Event> {
-    console.log("user", user)
     const event = await this.eventModel.findById(id).exec();
     if (!event) {
       throw new NotFoundException(`Event with id ${id} not found`);

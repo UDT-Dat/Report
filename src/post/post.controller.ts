@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Request, UseInterceptors, UploadedFiles, UploadedFile, BadRequestException } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Request, UseInterceptors, UploadedFiles, UploadedFile, BadRequestException, Query } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -10,12 +10,19 @@ import { Post as PostEntity } from './post.model';
 import { UserRole } from '../user/user.model';
 import { FileFieldsInterceptor, FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { BannerImageInterceptor } from './interceptors/banner-image.interceptor';
+import { QueryValidationPipe } from 'src/common/pipes/query-validation.pipe';
 
 @ApiTags('Posts')
 @Controller('posts')
 export class PostController {
-  constructor(private readonly postService: PostService) { }
-
+  private readonly postQueryPipe: QueryValidationPipe;
+  constructor(private readonly postService: PostService) {
+    this.postQueryPipe = new QueryValidationPipe(
+      ["title", "content", "updatedAt", "createdAt"], // allowedAttributes
+      [], // allowedOperators (giới hạn chỉ cho phép một số toán tử)
+      ["createdBy", "updatedAt", "createdAt"] // eqOnlyFields (status chỉ được dùng với toán tử eq)
+    );
+  }
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
@@ -29,7 +36,6 @@ export class PostController {
         fileSize: 10 * 1024 * 1024, // 10MB per file
       },
       fileFilter: (req, file, cb) => {
-        console.log(file)
         if (!file || typeof file === 'string') {
           return cb(null, true);
         }
@@ -79,9 +85,16 @@ export class PostController {
 
   @Get()
   @ApiOperation({ summary: 'Get all posts' })
+  @ApiQuery({
+    name: 'filter',
+    required: false,
+    description: 'Filter query in JSON format or query string format. Examples: {"username_like":"john"} or username_like=john&email=test@example.com',
+    type: String
+  })
   @ApiResponse({ status: 200, description: 'List of all posts', type: [PostEntity] })
-  async findAll(): Promise<PostEntity[]> {
-    return this.postService.findAll();
+  async findAll(@Query() query: any): Promise<PostEntity[]> {
+    const validatedQuery = await this.postQueryPipe.transform(query.filter);
+    return this.postService.findAll(validatedQuery);
   }
 
   @Get(':id')

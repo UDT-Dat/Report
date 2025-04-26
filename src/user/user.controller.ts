@@ -53,7 +53,6 @@ export class UserController {
     @ApiOperation({ summary: 'Get a user by id' })
     @ApiResponse({ status: 200, description: 'User details', type: User })
     async findOne(@Param('id') id: string): Promise<User> {
-        console.log(id);
         return this.userService.findById(id);
     }
 
