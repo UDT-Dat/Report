@@ -108,8 +108,8 @@ export class EventService {
     if (!event) {
       throw new NotFoundException(`Event with id ${id} not found`);
     }
-
-    const isParticipant = event.participants.some(p => p.toString() === user['_id'].toString());
+    console.log(user)
+    const isParticipant = event.participants.some(p => p.toString() === user['userId']?.toString());
     if (isParticipant) {
       throw new ConflictException('You have already joined this event');
     }

@@ -99,7 +99,7 @@ export class LibraryController {
   @Roles(UserRole.ADMIN, UserRole.MENTOR)
   @ApiOperation({ summary: 'Delete a library' })
   @ApiResponse({ status: 200, description: 'Library deleted successfully' })
-  async deleteLibrary(@Param('id') id: string, @UserDecorator() user: User): Promise<void> {
+  async deleteLibrary(@Param('id') id: string, @UserDecorator() user: User): Promise<Library> {
     return this.libraryService.deleteLibrary(id, user);
   }
 

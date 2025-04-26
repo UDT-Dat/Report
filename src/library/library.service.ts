@@ -130,8 +130,8 @@ export class LibraryService {
 
       const isAdmin = [UserRole.ADMIN, UserRole.MENTOR].includes(user.role as UserRole);
       const isCreator = library.createdBy.toString() === user.userId.toString();
-
-      if (!isAdmin && !isCreator) {
+      console.log(isCreator,isAdmin,!isAdmin && !isCreator)
+      if (!isAdmin || !isCreator) {
         throw new ForbiddenException('You do not have permission to update this library');
       }
 
@@ -156,7 +156,7 @@ export class LibraryService {
     }
   }
 
-  async deleteLibrary(id: string, user: User): Promise<void> {
+  async deleteLibrary(id: string, user: User): Promise<Library> {
     try {
       const library = await this.libraryModel.findById(id);
 
@@ -179,6 +179,7 @@ export class LibraryService {
 
       // Delete all associated permissions
       await this.permissionModel.deleteMany({ library: id });
+      return library;
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error;
@@ -200,11 +201,12 @@ export class LibraryService {
       if (!library) {
         throw new NotFoundException('Library not found');
       }
+      const isAdmin = [UserRole.ADMIN, UserRole.MENTOR].includes(user.role as UserRole);
       const hasPermission = await this.permissionModel.findOne({
         library: toObjectId(libraryId),
         user: toObjectId(user.userId)
       }).lean()
-      if(!hasPermission){
+      if(!hasPermission && !isAdmin){
         throw new ForbiddenException("You don't have permision for resource")
       }
 
