@@ -8,11 +8,13 @@ import { MailService } from './mail.service';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Notification.name, schema: NotificationSchema }]),
+    MongooseModule.forFeature([
+      { name: Notification.name, schema: NotificationSchema },
+    ]),
     ConfigModule,
   ],
   controllers: [NotificationController],
   providers: [NotificationService, MailService],
   exports: [NotificationService],
 })
-export class NotificationModule {} 
+export class NotificationModule {}

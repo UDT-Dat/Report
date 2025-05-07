@@ -26,4 +26,4 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   address?: string;
-} 
+}

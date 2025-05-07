@@ -21,7 +21,6 @@ export class Permission {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   user: Types.ObjectId;
 
-
   @ApiProperty({ description: 'The user who granted this permission' })
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   grantedBy: Types.ObjectId;
@@ -33,4 +32,4 @@ export class Permission {
   updatedAt: Date;
 }
 
-export const PermissionSchema = SchemaFactory.createForClass(Permission); 
+export const PermissionSchema = SchemaFactory.createForClass(Permission);

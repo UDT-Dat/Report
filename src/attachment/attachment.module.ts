@@ -12,4 +12,4 @@ import { Attachment, AttachmentSchema } from './attachment.model';
   providers: [AttachmentService],
   exports: [AttachmentService],
 })
-export class AttachmentModule { } 
+export class AttachmentModule {}

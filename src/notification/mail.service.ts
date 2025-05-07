@@ -44,7 +44,7 @@ export class MailService {
     // Simple template rendering implementation
     // For more complex templates, consider using a templating engine like handlebars directly
     let htmlContent = template;
-    
+
     // Replace variables in the template with their values from the context
     Object.entries(context).forEach(([key, value]) => {
       const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
@@ -57,4 +57,4 @@ export class MailService {
       html: htmlContent,
     });
   }
-} 
+}

@@ -17,7 +17,15 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -41,20 +49,27 @@ export class EventController {
   private readonly eventQueryPipe: QueryValidationPipe;
   constructor(private readonly eventService: EventService) {
     this.eventQueryPipe = new QueryValidationPipe(
-      ["title","description", "startDate", "endDate", "maxParticipants"], // allowedAttributes
+      ['title', 'description', 'startDate', 'endDate', 'maxParticipants'], // allowedAttributes
       [], // allowedOperators (giới hạn chỉ cho phép một số toán tử)
-      ["title", "description", "location", "startDate", "endDate", "maxParticipants"] // eqOnlyFields (status chỉ được dùng với toán tử eq)
+      [
+        'title',
+        'description',
+        'location',
+        'startDate',
+        'endDate',
+        'maxParticipants',
+      ], // eqOnlyFields (status chỉ được dùng với toán tử eq)
     );
   }
-
 
   @Get()
   @ApiOperation({ summary: 'Get all events with pagination' })
   @ApiQuery({
     name: 'filter',
     required: false,
-    description: 'Filter query in JSON format or query string format. Examples: {"username_like":"john"} or username_like=john&email=test@example.com',
-    type: String
+    description:
+      'Filter query in JSON format or query string format. Examples: {"username_like":"john"} or username_like=john&email=test@example.com',
+    type: String,
   })
   @ApiResponse({
     status: 200,
@@ -81,7 +96,7 @@ export class EventController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.MENTOR)
   @UseFilters(MulterExceptionFilter)
   @UseInterceptors(
     FileInterceptor('file', {
@@ -92,8 +107,10 @@ export class EventController {
         // Kiểm tra loại file có phải là hình ảnh không
         if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif)$/)) {
           return cb(
-            new BadRequestException('Only image files are allowed (jpg, jpeg, png, gif)'),
-            false
+            new BadRequestException(
+              'Only image files are allowed (jpg, jpeg, png, gif)',
+            ),
+            false,
           );
         }
         cb(null, true);
@@ -127,19 +144,25 @@ export class EventController {
   async create(
     @Body() createEventDto: CreateEventDto,
     @UploadedFile() file: Express.Multer.File,
-    @Request() req
+    @Request() req,
   ): Promise<Event> {
     if (!file) {
-      throw new BadRequestException('Image file is required for event creation');
+      throw new BadRequestException(
+        'Image file is required for event creation',
+      );
     }
-    return this.eventService.create({
-      ...createEventDto,
-    }, file.path, req.user);
+    return this.eventService.create(
+      {
+        ...createEventDto,
+      },
+      file.path,
+      req.user,
+    );
   }
 
   @Put(':id')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.MENTOR)
   @UseInterceptors(RemoveFileFieldInterceptor)
   @ApiOperation({ summary: 'Update an existing event' })
   @UseFilters(MulterExceptionFilter)
@@ -155,8 +178,10 @@ export class EventController {
         // Kiểm tra loại file có phải là hình ảnh không
         if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif)$/)) {
           return cb(
-            new BadRequestException('Only image files are allowed (jpg, jpeg, png, gif)'),
-            false
+            new BadRequestException(
+              'Only image files are allowed (jpg, jpeg, png, gif)',
+            ),
+            false,
           );
         }
         cb(null, true);
@@ -201,25 +226,34 @@ export class EventController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.MENTOR)
   @ApiOperation({ summary: 'Delete an event' })
   @ApiResponse({ status: 200, description: 'Event deleted successfully' })
   @ApiResponse({ status: 404, description: 'Event not found' })
   async remove(@Param('id') id: string, @Request() req): Promise<Event> {
-
     return this.eventService.remove(id, req.user);
   }
 
   @Post(':id/join')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Join an event' })
-  @ApiResponse({ status: 200, description: 'Joined event successfully', type: Event })
+  @ApiResponse({
+    status: 200,
+    description: 'Joined event successfully',
+    type: Event,
+  })
   async joinEvent(@Param('id') id: string, @Request() req): Promise<Event> {
     return this.eventService.joinEvent(id, req.user);
   }
 
   @Post(':id/leave')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Leave an event' })
-  @ApiResponse({ status: 200, description: 'Left event successfully', type: Event })
+  @ApiResponse({
+    status: 200,
+    description: 'Left event successfully',
+    type: Event,
+  })
   async leaveEvent(@Param('id') id: string, @Request() req): Promise<Event> {
     return this.eventService.leaveEvent(id, req.user);
   }

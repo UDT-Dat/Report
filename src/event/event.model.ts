@@ -51,7 +51,6 @@ export class Event {
   @ApiProperty({ description: 'Image URL for the event' })
   @Prop({ required: true })
   imageUrl: string;
-
 }
 
 export const EventSchema = SchemaFactory.createForClass(Event);

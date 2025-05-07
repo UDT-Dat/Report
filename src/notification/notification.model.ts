@@ -26,7 +26,10 @@ export class Notification {
   @Prop({ required: true })
   message: string;
 
-  @ApiProperty({ enum: NotificationType, description: 'The type of notification' })
+  @ApiProperty({
+    enum: NotificationType,
+    description: 'The type of notification',
+  })
   @Prop({ type: String, enum: NotificationType, required: true })
   type: NotificationType;
 
@@ -42,11 +45,15 @@ export class Notification {
   @Prop()
   relatedId: string;
 
-  @ApiProperty({ description: 'The timestamp when the notification was created' })
+  @ApiProperty({
+    description: 'The timestamp when the notification was created',
+  })
   createdAt: Date;
 
-  @ApiProperty({ description: 'The timestamp when the notification was last updated' })
+  @ApiProperty({
+    description: 'The timestamp when the notification was last updated',
+  })
   updatedAt: Date;
 }
 
-export const NotificationSchema = SchemaFactory.createForClass(Notification); 
+export const NotificationSchema = SchemaFactory.createForClass(Notification);

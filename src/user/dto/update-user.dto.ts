@@ -8,7 +8,10 @@ export class UpdateUserDto {
   @IsString()
   name?: string;
 
-  @ApiProperty({ description: 'The email address of the user', required: false })
+  @ApiProperty({
+    description: 'The email address of the user',
+    required: false,
+  })
   @IsOptional()
   @IsEmail()
   email?: string;
@@ -22,5 +25,4 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   address?: string;
-
-} 
+}

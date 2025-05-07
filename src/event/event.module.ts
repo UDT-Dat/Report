@@ -28,11 +28,11 @@ if (!fs.existsSync(uploadsDir)) {
             .join('');
           return cb(null, `${randomName}${extname(file.originalname)}`);
         },
-      })
-    })
+      }),
+    }),
   ],
   controllers: [EventController],
   providers: [EventService],
   exports: [EventService],
 })
-export class EventModule { }
+export class EventModule {}

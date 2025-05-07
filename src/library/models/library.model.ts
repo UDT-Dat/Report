@@ -29,13 +29,13 @@ export class Library {
 
   @ApiProperty({ description: 'The timestamp when the library was created' })
   createdAt: Date;
-  @ApiProperty({ description: 'The timestamp when the library was last updated' })
+  @ApiProperty({
+    description: 'The timestamp when the library was last updated',
+  })
   updatedAt: Date;
 
   attachments?: any[];
-
 }
-
 
 const LibrarySchema = SchemaFactory.createForClass(Library);
 LibrarySchema.virtual('attachments', {

@@ -36,4 +36,4 @@ export class Attachment {
   uploadedBy: User;
 }
 
-export const AttachmentSchema = SchemaFactory.createForClass(Attachment); 
+export const AttachmentSchema = SchemaFactory.createForClass(Attachment);

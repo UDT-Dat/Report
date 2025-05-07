@@ -1,5 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsDateString,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateEventDto {
   @ApiProperty({ description: 'The title of the event' })
@@ -27,7 +32,10 @@ export class CreateEventDto {
   @IsDateString()
   endDate: Date;
 
-  @ApiProperty({ description: 'The maximum number of participants', required: false })
+  @ApiProperty({
+    description: 'The maximum number of participants',
+    required: false,
+  })
   @IsOptional()
   maxParticipants?: number;
-} 
+}

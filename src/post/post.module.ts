@@ -25,4 +25,4 @@ if (!fs.existsSync(uploadsDir)) {
   providers: [PostService],
   exports: [PostService],
 })
-export class PostModule {} 
+export class PostModule {}

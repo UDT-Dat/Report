@@ -1,4 +1,10 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+  BadRequestException,
+} from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { Request } from 'express';
 
@@ -22,4 +28,4 @@ export class BannerImageInterceptor implements NestInterceptor {
 
     return next.handle();
   }
-} 
+}

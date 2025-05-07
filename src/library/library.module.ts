@@ -15,7 +15,7 @@ import { NotificationModule } from 'src/notification/notification.module';
   imports: [
     MongooseModule.forFeature([
       { name: Library.name, schema: LibrarySchema },
-      { name: Permission.name, schema: PermissionSchema }
+      { name: Permission.name, schema: PermissionSchema },
     ]),
     MulterModule.register({
       storage: diskStorage({
@@ -29,10 +29,10 @@ import { NotificationModule } from 'src/notification/notification.module';
       }),
     }),
     AttachmentModule,
-    NotificationModule
+    NotificationModule,
   ],
   controllers: [LibraryController],
   providers: [LibraryService],
   exports: [LibraryService],
 })
-export class LibraryModule { }
+export class LibraryModule {}

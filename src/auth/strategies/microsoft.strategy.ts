@@ -23,4 +23,4 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     const user = await this.authService.validateMicrosoftUser(profile);
     return user;
   }
-} 
+}

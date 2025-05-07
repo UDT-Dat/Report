@@ -33,4 +33,4 @@ export class RefreshToken {
   updatedAt: Date;
 }
 
-export const RefreshTokenSchema = SchemaFactory.createForClass(RefreshToken); 
+export const RefreshTokenSchema = SchemaFactory.createForClass(RefreshToken);

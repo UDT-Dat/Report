@@ -19,7 +19,7 @@ import { UserService } from 'src/user/user.service';
     PassportModule,
     ConfigModule,
     MongooseModule.forFeature([
-      { name: RefreshToken.name, schema: RefreshTokenSchema }
+      { name: RefreshToken.name, schema: RefreshTokenSchema },
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -31,7 +31,13 @@ import { UserService } from 'src/user/user.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, MicrosoftStrategy, GoogleStrategy, RefreshTokenService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    MicrosoftStrategy,
+    GoogleStrategy,
+    RefreshTokenService,
+  ],
   exports: [AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}

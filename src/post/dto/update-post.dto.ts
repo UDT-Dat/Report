@@ -13,13 +13,16 @@ export class UpdatePostDto {
   @IsString()
   content?: string;
 
-  @ApiProperty({ description: 'Array if of attachment you want to remove', required: false })
+  @ApiProperty({
+    description: 'Array if of attachment you want to remove',
+    required: false,
+  })
   @IsOptional()
   @Transform(({ value }) => {
     // Handle array with potentially comma-separated values
     if (Array.isArray(value)) {
       const result: string[] = [];
-      value.forEach(item => {
+      value.forEach((item) => {
         if (typeof item === 'string' && item.includes(',')) {
           result.push(...item.split(','));
         } else {
@@ -37,4 +40,4 @@ export class UpdatePostDto {
   })
   @IsArray()
   removeAttachments?: string[];
-} 
+}

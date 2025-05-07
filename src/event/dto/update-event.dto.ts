@@ -17,18 +17,26 @@ export class UpdateEventDto {
   @IsString()
   location?: string;
 
-  @ApiProperty({ description: 'The start date and time of the event', required: false })
+  @ApiProperty({
+    description: 'The start date and time of the event',
+    required: false,
+  })
   @IsOptional()
   @IsDateString()
   startDate?: Date;
 
-  @ApiProperty({ description: 'The end date and time of the event', required: false })
+  @ApiProperty({
+    description: 'The end date and time of the event',
+    required: false,
+  })
   @IsOptional()
   @IsDateString()
   endDate?: Date;
 
-  @ApiProperty({ description: 'The maximum number of participants', required: false })
+  @ApiProperty({
+    description: 'The maximum number of participants',
+    required: false,
+  })
   @IsOptional()
   maxParticipants?: number;
-
 }

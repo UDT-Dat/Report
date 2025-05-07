@@ -7,9 +7,11 @@ export class UpdateLibraryDto {
   @IsString()
   title?: string;
 
-  @ApiProperty({ description: 'The description of the resource', required: false })
+  @ApiProperty({
+    description: 'The description of the resource',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   description?: string;
-
-} 
+}

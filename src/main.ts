@@ -23,7 +23,6 @@ async function bootstrap() {
     origin: true, // Cho phép tất cả origins trong môi trường development
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
-
   });
 
   // Cấu hình prefix cho tất cả các API routes
@@ -45,7 +44,6 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
-
 
   const config = new DocumentBuilder()
     .setTitle('Club Management API')
@@ -75,5 +73,3 @@ async function bootstrap() {
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
-
-

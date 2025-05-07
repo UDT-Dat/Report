@@ -7,4 +7,4 @@ export class CreatePermissionDto {
   @IsNotEmpty()
   @IsString()
   userId: string;
-} 
+}

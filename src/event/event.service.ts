@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,11 +19,15 @@ import convertParam from 'src/common/utils/convert-params';
 export class EventService {
   constructor(
     @InjectModel(Event.name) private eventModel: Model<EventDocument>,
-  ) { }
+  ) {}
 
-  async create(createEventDto: CreateEventDto, imageUrl: string, user: any): Promise<Event> {
-    if (user.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Only admins can create events');
+  async create(
+    createEventDto: CreateEventDto,
+    imageUrl: string,
+    user: any,
+  ): Promise<Event> {
+    if (user.role !== UserRole.MENTOR) {
+      throw new ForbiddenException('Only mentors can create events');
     }
 
     const event = new this.eventModel({
@@ -30,32 +40,33 @@ export class EventService {
     return event.save();
   }
 
-
   async findAll(query: object): Promise<Event[]> {
-    const { result: filter, errors, pagination } = convertParam(query)
+    const { result: filter, errors, pagination } = convertParam(query);
     if (errors.length > 0) {
-      throw new BadRequestException(errors.join("."))
+      throw new BadRequestException(errors.join('.'));
     }
-    return this.eventModel.find(filter)
+    return this.eventModel
+      .find(filter)
       .limit(pagination.size)
       .skip((pagination.page - 1) * pagination.size)
       .populate({
         path: 'createdBy',
-        select: 'name email _id phone address'
+        select: 'name email _id phone address',
       })
       .populate('participants')
       .exec();
   }
 
   async findOne(id: string): Promise<Event> {
-    const event = await this.eventModel.findById(id)
+    const event = await this.eventModel
+      .findById(id)
       .populate({
         path: 'createdBy',
-        select: 'name email _id phone address'
+        select: 'name email _id phone address',
       })
       .populate({
         path: 'participants',
-        select: '-__v'
+        select: '-__v',
       })
       .exec();
 
@@ -66,9 +77,14 @@ export class EventService {
     return event;
   }
 
-  async update(id: string, updateEventDto: UpdateEventDto, file: Express.Multer.File | undefined, user: any): Promise<Event> {
-    if (user.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Only admins can update events');
+  async update(
+    id: string,
+    updateEventDto: UpdateEventDto,
+    file: Express.Multer.File | undefined,
+    user: any,
+  ): Promise<Event> {
+    if (user.role !== UserRole.MENTOR) {
+      throw new ForbiddenException('Only mentors can update events');
     }
     let imageUrl: string | null = null;
     if (file) {
@@ -80,9 +96,13 @@ export class EventService {
       throw new NotFoundException(`Event with id ${id} not found`);
     }
 
-
-
-    const updated = await this.eventModel.findByIdAndUpdate(id, { ...updateEventDto, ...(imageUrl ? { imageUrl } : {}) }, { new: true }).exec();
+    const updated = await this.eventModel
+      .findByIdAndUpdate(
+        id,
+        { ...updateEventDto, ...(imageUrl ? { imageUrl } : {}) },
+        { new: true },
+      )
+      .exec();
     if (!updated) {
       throw new NotFoundException(`Event with id ${id} not found after update`);
     }
@@ -90,8 +110,8 @@ export class EventService {
   }
 
   async remove(id: string, user: User): Promise<Event> {
-    if (user.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Only admins can delete events');
+    if (user.role !== UserRole.MENTOR) {
+      throw new ForbiddenException('Only mentors can delete events');
     }
 
     const event = await this.eventModel.findByIdAndDelete(id).exec();
@@ -107,13 +127,20 @@ export class EventService {
     if (!event) {
       throw new NotFoundException(`Event with id ${id} not found`);
     }
-    const isParticipant = event.participants.some(p => p.toString() === user['userId']?.toString());
+    const isParticipant = event.participants.some(
+      (p) => p.toString() === user['userId']?.toString(),
+    );
     if (isParticipant) {
       throw new ConflictException('You have already joined this event');
     }
 
-    if (event.maxParticipants && event.participants.length >= event.maxParticipants) {
-      throw new ConflictException('This event has reached maximum participants');
+    if (
+      event.maxParticipants &&
+      event.participants.length >= event.maxParticipants
+    ) {
+      throw new ConflictException(
+        'This event has reached maximum participants',
+      );
     }
 
     event.participants.push(toObjectId(user.userId));
@@ -126,12 +153,16 @@ export class EventService {
       throw new NotFoundException(`Event with id ${id} not found`);
     }
 
-    const isParticipant = event.participants.some(p => p.toString() === user.userId);
+    const isParticipant = event.participants.some(
+      (p) => p.toString() === user.userId,
+    );
     if (!isParticipant) {
       throw new ConflictException('You are not a participant of this event');
     }
 
-    event.participants = event.participants.filter(p => p.toString() !== user.userId);
+    event.participants = event.participants.filter(
+      (p) => p.toString() !== user.userId,
+    );
     return event.save();
   }
 }

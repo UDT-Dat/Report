@@ -1,6 +1,21 @@
-import { Controller, Get, Post, Body, UseGuards, Request, Res, HttpCode, UnauthorizedException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+  Res,
+  HttpCode,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -17,12 +32,15 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
     private readonly userService: UserService,
-  ) { }
+  ) {}
 
   @Post('login')
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiResponse({ status: 200, description: 'Login successful' })
-  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(
+    @Body() loginDto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const result = await this.authService.login(loginDto);
 
     // Set refresh token in HttpOnly cookie
@@ -37,7 +55,10 @@ export class AuthController {
   @Post('register')
   @ApiOperation({ summary: 'Register a new user' })
   @ApiResponse({ status: 201, description: 'User registered successfully' })
-  async register(@Body() registerDto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+  async register(
+    @Body() registerDto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const result = await this.authService.register(registerDto);
 
     // Trả về kết quả mà không cần tự động đăng nhập
@@ -46,10 +67,15 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Refresh access token using refresh token from cookie' })
+  @ApiOperation({
+    summary: 'Refresh access token using refresh token from cookie',
+  })
   @ApiResponse({ status: 200, description: 'Token refreshed successfully' })
   @ApiResponse({ status: 401, description: 'Invalid refresh token' })
-  async refreshToken(@Request() req, @Res({ passthrough: true }) res: Response) {
+  async refreshToken(
+    @Request() req,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     // Get refresh token from cookie
     const refreshToken = req.cookies['refresh_token'];
 
@@ -90,7 +116,9 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  @ApiOperation({ summary: 'Google OAuth callback URL - handles both new and returning users' })
+  @ApiOperation({
+    summary: 'Google OAuth callback URL - handles both new and returning users',
+  })
   async googleAuthCallback(@Request() req, @Res() res: Response) {
     const tokenData = await this.authService.generateToken(req.user);
 
@@ -128,8 +156,8 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'User profile' })
   async getProfile(@Request() req) {
     return {
-      user: await this.userService.findById(req.user.userId)
-    }
+      user: await this.userService.findById(req.user.userId),
+    };
   }
 
   private setRefreshTokenCookie(res: Response, token: string) {

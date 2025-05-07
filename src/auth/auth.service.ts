@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  NotFoundException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -17,7 +21,7 @@ export class AuthService {
     private jwtService: JwtService,
     private refreshTokenService: RefreshTokenService,
     private configService: ConfigService,
-  ) { }
+  ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
     try {
@@ -43,7 +47,9 @@ export class AuthService {
     }
 
     if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException('Account is not active. Please wait for approval.');
+      throw new UnauthorizedException(
+        'Account is not active. Please wait for approval.',
+      );
     }
 
     // Create access token
@@ -56,7 +62,7 @@ export class AuthService {
       access_token: accessToken,
       refresh_token: refreshToken.token,
       expires_in: 900, // 15 minutes in seconds
-      user: getInfoData(['_id', 'name', 'email', 'role'], user)
+      user: getInfoData(['_id', 'name', 'email', 'role'], user),
     };
   }
 
@@ -69,13 +75,14 @@ export class AuthService {
 
     return {
       message: 'Registration successful. Please wait for account approval.',
-      user: getInfoData(['_id', 'name', 'email'], user, "user_id"),
+      user: getInfoData(['_id', 'name', 'email'], user, 'user_id'),
     };
   }
 
   async refreshToken(token: string) {
     // Validate the refresh token
-    const refreshToken = await this.refreshTokenService.validateRefreshToken(token);
+    const refreshToken =
+      await this.refreshTokenService.validateRefreshToken(token);
 
     // Get the user
     const user = await this.userService.findById(refreshToken.userId);
@@ -99,7 +106,7 @@ export class AuthService {
       access_token: accessToken,
       refresh_token: newRefreshToken.token,
       expires_in: 900, // 15 minutes in seconds
-      user: getInfoData(['_id', 'name', 'email', 'role'], user)
+      user: getInfoData(['_id', 'name', 'email', 'role'], user),
     };
   }
 
@@ -144,8 +151,8 @@ export class AuthService {
       const newUser = await this.userService.create({
         name: profile.displayName,
         email: email,
-        phone: "",
-        address: "",
+        phone: '',
+        address: '',
         password: await bcrypt.hash(Math.random().toString(36).slice(-8), 10), // Random password
         role: UserRole.MEMBER,
         status: UserStatus.PENDING,
@@ -165,7 +172,7 @@ export class AuthService {
     return {
       access_token: accessToken,
       refresh_token: refreshToken.token,
-      user: getInfoData(['_id', 'name', 'email', 'role'], user)
+      user: getInfoData(['_id', 'name', 'email', 'role'], user),
     };
   }
 
@@ -187,6 +194,9 @@ export class AuthService {
     await this.refreshTokenService.revokeAllUserTokens(userId);
 
     // Create a new refresh token
-    return this.refreshTokenService.createRefreshToken(userId, refreshTokenExpiry);
+    return this.refreshTokenService.createRefreshToken(
+      userId,
+      refreshTokenExpiry,
+    );
   }
 }
